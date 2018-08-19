@@ -65,6 +65,38 @@ class XPath
     }
 
     /**
+     * queries the document and returns a single result item or null
+     *
+     *@return DOMNode|null
+    */
+    public function selectAltNode(string $expressions, DOMNode $context_node = null)
+    {
+        foreach(preg_split('/\s*\|\|\s*/', $expressions) as $expression) {
+            $result = $this->selectNode($expression, $context_node);
+            if ($result)
+                return $result;
+        }
+
+        return null;
+    }
+
+    /**
+     * queries the document and returns a DOMNodeList or null
+     *
+     *@return DOMNodeList|null
+    */
+    public function selectAltNodes(string $expressions, DOMNode $context_node = null)
+    {
+        foreach(preg_split('/\s*\|\|\s*/', $expressions) as $expression) {
+            $result = $this->selectNodes($expression, $context_node);
+            if ($result && $result->length > 0)
+                return $result;
+        }
+
+        return null;
+    }
+
+    /**
      * returns the dom xpath
      *
      *@return DOMXPath
