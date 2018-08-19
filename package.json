@@ -1,0 +1,19 @@
+{
+  "name": "php-feed-parser",
+  "version": "1.0.0",
+  "description": "A fully integrated atom, rss and rdf syndication feed parser for php",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harrison-ifeanyichukwu/php-feed-parser.git"
+  },
+  "author": "Harrison Ifeanyichukwu <Harrisonifeanyichukwu@gmail.com> (http://fjsfoundations.com/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/harrison-ifeanyichukwu/php-feed-parser/issues"
+  },
+  "homepage": "https://github.com/harrison-ifeanyichukwu/php-feed-parser#readme"
+}
