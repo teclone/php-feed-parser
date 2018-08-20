@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 use Forensic\FeedParser\Exceptions\InvalidURLException;
 use Forensic\FeedParser\Exceptions\ResourceNotFoundException;
 use Forensic\FeedParser\Exceptions\FileNotFoundException;
+use Forensic\FeedParser\Exceptions\MalformedFeedException;
+use Forensic\FeedParser\Exceptions\FeedTypeNotSupportedException;
 
 class ParserTest extends TestCase
 {
@@ -16,6 +18,23 @@ class ParserTest extends TestCase
     public function setup()
     {
         $this->_parser = new Parser();
+    }
+
+    public function testDefaultLanguage()
+    {
+        $this->assertSame('en', $this->_parser->getDefaultLanguage());
+    }
+
+    public function testUpdateDefaultLanguage()
+    {
+        $this->_parser->setDefaultLanguage('fr');
+        $this->assertSame('fr', $this->_parser->getDefaultLanguage());
+    }
+
+    public function testConstructDefaultLanguageOption()
+    {
+        $parser = new Parser('fr');
+        $this->assertSame('fr', $parser->getDefaultLanguage());
     }
 
     public function testInvalidUrl()
