@@ -20,6 +20,29 @@ use Forensic\FeedParser\Exceptions\FileNotFoundException;
 */
 class Parser
 {
+    private $_default_lang = '';
+
+    public function __construct(string $default_lang = 'en')
+    {
+        $this->setDefaultLanguage($default_lang);
+    }
+
+    /**
+     * set default language
+    */
+    public function setDefaultLanguage(string $default_lang)
+    {
+        $this->_default_lang = $default_lang;
+    }
+
+    /**
+     * return default language
+    */
+    public function getDefaultLanguage()
+    {
+        return $this->_default_lang;
+    }
+
     /**
      * creates a feed parser, and xml document, feeds the document to the parser, and returns
      * the result from the parser
@@ -72,7 +95,7 @@ class Parser
      * Parses feed from the given xml string
      *
      *@param string $xml - the xml string
-     */
+    */
     public function parseFromString(string $xml)
     {
         return $this->parse($xml);
