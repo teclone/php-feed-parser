@@ -14,6 +14,8 @@ use Exception;
 use Forensic\FeedParser\Exceptions\InvalidURLException;
 use Forensic\FeedParser\Exceptions\ResourceNotFoundException;
 use Forensic\FeedParser\Exceptions\FileNotFoundException;
+use Forensic\FeedParser\Exceptions\MalformedFeedException;
+use Forensic\FeedParser\Exceptions\FeedTypeNotSupportedException;
 
 /**
  * Class Parser
@@ -49,7 +51,34 @@ class Parser
     */
     private function parse(string $xml)
     {
-        return null;
+        $xml_instance = new XML($xml);
+        if (!$xml_instance->status())
+            throw new MalformedFeedException(implode("\n", $xml_instance->errors()));
+
+        $doc = $xml_instance->document();
+        $xpath = new XPath($doc);
+
+        $result = null;
+
+        //inspect feed type
+        $feed_name = explode(':', $doc->documentElement->tagName)[0];
+        switch(strtolower($feed_name))
+        {
+            case 'feed':
+                $result = null;
+                break;
+            case 'rss':
+                $result = null;
+                break;
+            case 'rdf':
+                $result = null;
+                break;
+            default:
+                $message = $feed_name . ' feed type is currently not support';
+                throw new FeedTypeNotSupportedException($message);
+                break;
+        }
+        return $result;
     }
 
     /**
