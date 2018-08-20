@@ -54,4 +54,16 @@ class ParserTest extends TestCase
         $this->expectException(FileNotFoundException::class);
         $this->_parser->parseFromFile('./somefile.xml');
     }
+
+    public function testMalformedFeed()
+    {
+        $this->expectException(MalformedFeedException::class);
+        $this->_parser->parseFromFile(__DIR__ . '/../package.json');
+    }
+
+    public function testNonSupportedFeedType()
+    {
+        $this->expectException(FeedTypeNotSupportedException::class);
+        $this->_parser->parseFromFile(__DIR__ . '/../phpunit.xml');
+    }
 }
