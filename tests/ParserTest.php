@@ -25,16 +25,40 @@ class ParserTest extends TestCase
         $this->assertSame('en', $this->_parser->getDefaultLanguage());
     }
 
+    public function testDefaultRemoveStyles()
+    {
+        $this->assertTrue($this->_parser->removeStyles());
+    }
+
+    public function testDefaultRemoveScripts()
+    {
+        $this->assertTrue($this->_parser->removeScripts());
+    }
+
     public function testUpdateDefaultLanguage()
     {
         $this->_parser->setDefaultLanguage('fr');
         $this->assertSame('fr', $this->_parser->getDefaultLanguage());
     }
 
-    public function testConstructDefaultLanguageOption()
+    public function testUpdateRemoveStyles()
     {
-        $parser = new Parser('fr');
+        $this->_parser->removeStyles(false);
+        $this->assertFalse($this->_parser->removeStyles());
+    }
+
+    public function testUpdateRemoveScripts()
+    {
+        $this->_parser->removeScripts(false);
+        $this->assertFalse($this->_parser->removeScripts());
+    }
+
+    public function testConstructSettings()
+    {
+        $parser = new Parser('fr', false, false);
         $this->assertSame('fr', $parser->getDefaultLanguage());
+        $this->assertFalse($parser->removeStyles());
+        $this->assertFalse($parser->removeScripts());
     }
 
     public function testInvalidUrl()
