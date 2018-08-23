@@ -5,6 +5,7 @@ namespace Forensic\FeedParser\Test;
 
 use Forensic\FeedParser\XPath;
 use PHPUnit\Framework\TestCase;
+use DOMDocument;
 
 class XPathTest extends TestCase
 {
@@ -38,7 +39,7 @@ class XPathTest extends TestCase
 
         </documents>
 XML;
-        $document = new \DOMDocument('1.0', 'UTF-8');
+        $document = new DOMDocument('1.0', 'UTF-8');
         $document->loadXML(trim($xml));
 
         $this->_xpath = new XPath($document);
@@ -73,6 +74,19 @@ XML;
         $this->assertInstanceOf('DOMXPath', $this->_xpath->get());
     }
 
+    public function testInitialContextNode()
+    {
+        $this->assertNull($this->_xpath->getContextNode());
+    }
+
+    public function testSetContextNode()
+    {
+        $context_node = $this->_xpath->get()->document->documentElement;
+        $this->_xpath->setContextNode($context_node);
+
+        $this->assertSame($context_node, $this->_xpath->getContextNode());
+    }
+
     /**
      *@dataProvider expressionProvider
     */
@@ -81,8 +95,8 @@ XML;
         $dom_xpath = $this->_xpath->get();
         $this->assertFalse($dom_xpath->evaluate($existing));
 
-        foreach($this->_namespaces as $prefix => $namespaceURI)
-            $this->assertTrue($this->_xpath->registerNamespace($prefix, $namespaceURI));
+        foreach($this->_namespaces as $prefix => $namespace_uri)
+            $this->assertTrue($this->_xpath->registerNamespace($prefix, $namespace_uri));
 
         $this->assertInstanceOf('DOMNodeList', $dom_xpath->evaluate($existing));
     }
@@ -136,10 +150,8 @@ XML;
     public function testSelectNonExistingNodes(string $existing, string $non_existing)
     {
         $this->_xpath->registerNamespaces($this->_namespaces);
-        $result = $this->_xpath->selectNodes($non_existing);
 
-        $this->assertInstanceOf('DOMNodeList', $result);
-        $this->assertCount(0, $result);
+        $this->assertNull($this->_xpath->selectNodes($non_existing));
     }
 
     /**
@@ -168,7 +180,6 @@ XML;
         $this->_xpath->registerNamespaces($this->_namespaces);
 
         $expressions = [$existing, $non_existing];
-
 
         $result = $this->_xpath->selectAltNodes(implode(' || ', $expressions));
 
