@@ -16,6 +16,7 @@ use Forensic\FeedParser\Exceptions\ResourceNotFoundException;
 use Forensic\FeedParser\Exceptions\FileNotFoundException;
 use Forensic\FeedParser\Exceptions\MalformedFeedException;
 use Forensic\FeedParser\Exceptions\FeedTypeNotSupportedException;
+use Forensic\FeedParser\Feeds\ATOMFeed;
 
 /**
  * Class Parser
@@ -23,10 +24,22 @@ use Forensic\FeedParser\Exceptions\FeedTypeNotSupportedException;
 class Parser
 {
     private $_default_lang = '';
+    private $_remove_styles = null;
+    private $_remove_scripts = null;
 
-    public function __construct(string $default_lang = 'en')
+    /**
+     *@param string $default_lang - fallback feed default language.
+     *@param bool $remove_styles - boolean value indicating if inline style attributes and
+     * style elements should be removed
+     *@param bool $remove_scripts - boolean value indicating if inline on* event script
+     * attributes event listeners and script elements should be removed
+    */
+    public function __construct(string $default_lang = 'en', bool $remove_styles = true,
+        bool $remove_scripts = true)
     {
         $this->setDefaultLanguage($default_lang);
+        $this->removeStyles($remove_styles);
+        $this->removeScripts($remove_scripts);
     }
 
     /**
@@ -46,6 +59,36 @@ class Parser
     }
 
     /**
+     * sets or returns the remove styles parse attributes
+     *
+     *@param bool [$remove_styles] - the remove styles attributes
+     *@return bool|this
+    */
+    public function removeStyles(bool $remove_styles = null)
+    {
+        if (is_null($remove_styles))
+            return $this->_remove_styles;
+
+        $this->_remove_styles = $remove_styles;
+        return $this;
+    }
+
+    /**
+     * sets or returns the remove scripts parse attributes
+     *
+     *@param bool [$remove_scripts] - the remove scripts attributes
+     *@return bool|this
+    */
+    public function removeScripts(bool $remove_scripts = null)
+    {
+        if (is_null($remove_scripts))
+            return $this->_remove_scripts;
+
+        $this->_remove_scripts = $remove_scripts;
+        return $this;
+    }
+
+    /**
      * creates a feed parser, and xml document, feeds the document to the parser, and returns
      * the result from the parser
     */
@@ -61,7 +104,7 @@ class Parser
         $result = null;
 
         //inspect feed type
-        $feed_name = explode(':', $doc->documentElement->tagName)[0];
+        $feed_name = $doc->documentElement->localName;
         switch(strtolower($feed_name))
         {
             case 'feed':
