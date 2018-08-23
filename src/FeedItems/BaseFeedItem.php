@@ -6,6 +6,7 @@ namespace Forensic\FeedParser\FeedItems;
 use Forensic\FeedParser\Enums\FeedItemTypes;
 use Forensic\FeedParser\XPath;
 use DOMElement;
+use Forensic\FeedParser\Traits\Parser;
 
 class BaseFeedItem
 {
@@ -90,5 +91,7 @@ class BaseFeedItem
         $this->_type = $feed_item_type;
 
         $xpath->setContextNode($item);
+
+        $this->parse($xpath, $property_selectors, $remove_styles, $remove_scripts);
     }
 }
