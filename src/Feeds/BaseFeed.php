@@ -6,6 +6,10 @@ namespace Forensic\FeedParser\Feeds;
 use Forensic\FeedParser\Enums\FeedTypes;
 use Forensic\FeedParser\XPath;
 use Forensic\FeedParser\Traits\Parser;
+use Forensic\FeedParser\Enums\FeedItemTypes;
+use Forensic\FeedParser\FeedItems\ATOMFeedItem;
+use Forensic\FeedParser\FeedItems\RSSFeedItem;
+use Forensic\FeedParser\FeedItems\RDFFeedItem;
 
 class BaseFeed
 {
@@ -98,5 +102,23 @@ class BaseFeed
         //register namespaces and parse the feed
         $xpath->registerNamespaces($namespaces);
         $this->parse($xpath, $property_selectors, $remove_styles, $remove_scripts);
+
+        $item_class = null;
+        switch($feed_type->value())
+        {
+            case FeedItemTypes::ATOM_FEED_ITEM:
+                $item_class = ATOMFeedItem::class;
+                break;
+            case FeedItemTypes::RSS_FEED_ITEM:
+                $item_class = RSSFeedItem::class;
+                break;
+            default:
+                $item_class = RDFFeedItem::class;
+        }
+
+        //get items and parse
+        $items = $xpath->selectAltNodes($item_selector);
+        for ($i = 0, $len = $items->length; $i < $len; $i++)
+            $this->_items[] = new $item_class($items->item($i), $xpath, $remove_styles, $remove_scripts);
     }
 }
