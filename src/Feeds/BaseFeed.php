@@ -5,9 +5,12 @@ namespace Forensic\FeedParser\Feeds;
 
 use Forensic\FeedParser\Enums\FeedTypes;
 use Forensic\FeedParser\XPath;
+use Forensic\FeedParser\Traits\Parser;
 
 class BaseFeed
 {
+    use Parser;
+
     /**
      * feed type
     */
@@ -94,5 +97,6 @@ class BaseFeed
 
         //register namespaces and parse the feed
         $xpath->registerNamespaces($namespaces);
+        $this->parse($xpath, $property_selectors, $remove_styles, $remove_scripts);
     }
 }
