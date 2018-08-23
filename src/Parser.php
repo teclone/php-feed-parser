@@ -17,6 +17,8 @@ use Forensic\FeedParser\Exceptions\FileNotFoundException;
 use Forensic\FeedParser\Exceptions\MalformedFeedException;
 use Forensic\FeedParser\Exceptions\FeedTypeNotSupportedException;
 use Forensic\FeedParser\Feeds\ATOMFeed;
+use Forensic\FeedParser\Feeds\RSSFeed;
+use Forensic\FeedParser\Feeds\RDFFeed;
 
 /**
  * Class Parser
@@ -101,27 +103,33 @@ class Parser
         $doc = $xml_instance->document();
         $xpath = new XPath($doc);
 
-        $result = null;
-
         //inspect feed type
         $feed_name = $doc->documentElement->localName;
+        $model = null;
         switch(strtolower($feed_name))
         {
             case 'feed':
-                $result = null;
+                $model = ATOMFeed::class;
                 break;
             case 'rss':
-                $result = null;
+                $model = RSSFeed::class;
                 break;
             case 'rdf':
-                $result = null;
+                $model = RDFFeed::class;
                 break;
             default:
-                $message = $feed_name . ' feed type is currently not support';
-                throw new FeedTypeNotSupportedException($message);
+                throw new FeedTypeNotSupportedException(
+                    $feed_name . ' feed type is currently not support'
+                );
                 break;
         }
-        return $result;
+
+        return new $model(
+            $xpath,
+            $this->getDefaultLanguage(),
+            $this->removeStyles(),
+            $this->removeScripts()
+        );
     }
 
     /**
