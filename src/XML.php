@@ -3,6 +3,8 @@ declare(strict_types = 1);
 
 namespace Forensic\FeedParser;
 
+use DOMDocument;
+
 class XML
 {
     private $_doc = null;
@@ -27,11 +29,11 @@ class XML
         if (is_null($xml))
             return false;
 
+        $this->_doc = new DOMDocument();
         libxml_use_internal_errors(true);
-        $this->_doc = $doc = new \DOMDocument();
 
         //if document was loaded successfully, bail out
-        if ($doc->loadXML(trim($xml)))
+        if ($this->_doc->loadXML(trim($xml)))
             return true;
 
         foreach (libxml_get_errors() as $error)
@@ -55,9 +57,9 @@ class XML
     }
 
     /**
-     * returns the xml document or null if not parsed successful.
+     * returns the xml document or null if not parsed successfully.
      *
-     *@return \DOMDocument|null
+     *@return DOMDocument|null
     */
     public function document()
     {
