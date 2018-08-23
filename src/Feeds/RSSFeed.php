@@ -5,7 +5,6 @@ namespace Forensic\FeedParser\Feeds;
 
 use Forensic\FeedParser\Enums\FeedTypes;
 use Forensic\FeedParser\XPath;
-use Forensic\FeedParser\FeedItems\RSSFeedItem;
 
 class RSSFeed extends BaseFeed
 {

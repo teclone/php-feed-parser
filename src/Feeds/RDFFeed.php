@@ -5,10 +5,9 @@ namespace Forensic\FeedParser\Feeds;
 
 use Forensic\FeedParser\Enums\FeedTypes;
 use Forensic\FeedParser\XPath;
-use Forensic\FeedParser\FeedItems\RDFFeedItem;
 
 
-class RSSFeed extends BaseFeed
+class RDFFeed extends BaseFeed
 {
     public function __construct(XPath $xpath, string $default_lang,
         bool $remove_styles, bool $remove_scripts)
