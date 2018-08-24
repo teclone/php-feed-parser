@@ -121,7 +121,6 @@ class Parser
                 throw new FeedTypeNotSupportedException(
                     $feed_name . ' feed type is currently not support'
                 );
-                break;
         }
 
         return new $model(
