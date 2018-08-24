@@ -56,13 +56,14 @@ trait Parser
                 break;
             }
         }
-        $serialized_content = $xpath->get()->document->saveXML($div);
+
+        $serialized_content = trim($xpath->get()->document->saveXML($div));
 
         //replace all forms of xml namespace prefixes
         $prefix = '([-\w]:)';
         $filtered_content = preg_replace([
                 '/^<' . $prefix . '?div[^>]*>/', //remove the parent div start tag
-                '/<\/' . $prefix . '?div\s*>$/im', //remove the parent div end tag
+                '/<\s*\/' . $prefix . '?div\s*>$/', //remove the parent div end tag
                 '/<' . $prefix . '/im', //remove all namespace prefixes
                 '/<\/' . $prefix . '/im', //remove all namespace prefixes
             ], [
@@ -98,7 +99,7 @@ trait Parser
             $filtered_content = preg_replace_callback(
                 '/(<[^>]+)\s+on[a-z]+=("[^"]*"|\'[^\']*\')/im',
                 function ($matches) {
-                    return $matches[1];
+                    return $matches[1]; //@codeCoverageIgnore
                 },
                 $filtered_content
             );
@@ -130,22 +131,13 @@ trait Parser
     {
         foreach($property_maps as $property_name => $property_selectors)
         {
-            if (is_array($property_selectors))
-                $this->parseArrayProperty(
-                    $xpath,
-                    $store[$property_name],
-                    $property_selectors,
-                    $remove_styles,
-                    $remove_scripts
-                );
-            else
-                $store[$property_name] = $this->resolveProperty(
-                    $xpath,
-                    $property_name,
-                    $property_selectors,
-                    $remove_styles,
-                    $remove_scripts
-                );
+            $store[$property_name] = $this->resolveProperty(
+                $xpath,
+                $property_name,
+                $property_selectors,
+                $remove_styles,
+                $remove_scripts
+            );
         }
     }
 
