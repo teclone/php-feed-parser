@@ -95,6 +95,11 @@ class BaseFeedItem
         $this->parse($xpath, $property_selectors, $remove_styles, $remove_scripts);
     }
 
+    /**
+     *
+     *@param string $property - the property to retrieve
+     *@return string|null
+    */
     public function __get(string $property)
     {
         $this_property = '_' . $property;
