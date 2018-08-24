@@ -134,7 +134,7 @@ class BaseFeed
         if (property_exists($this, $this_property))
         {
             $value = $this->{$this_property};
-            if (is_array($value))
+            if (is_array($value) && $property !== 'items')
                 return new ParameterBag($value);
             else
                 return $value;
