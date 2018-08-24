@@ -10,6 +10,7 @@ use Forensic\FeedParser\Enums\FeedItemTypes;
 use Forensic\FeedParser\FeedItems\ATOMFeedItem;
 use Forensic\FeedParser\FeedItems\RSSFeedItem;
 use Forensic\FeedParser\FeedItems\RDFFeedItem;
+use Forensic\FeedParser\ParameterBag;
 
 class BaseFeed
 {
@@ -122,12 +123,23 @@ class BaseFeed
             $this->_items[] = new $item_class($items->item($i), $xpath, $remove_styles, $remove_scripts);
     }
 
+    /**
+     *
+     *@param string $property - the property to retrieve
+     *@return string|null
+    */
     public function __get(string $property)
     {
         $this_property = '_' . $property;
         if (property_exists($this, $this_property))
-            return $this->{$this_property};
-        else
-            return null;
+        {
+            $value = $this->{$this_property};
+            if (is_array($value))
+                return new ParameterBag($value);
+            else
+                return $value;
+        }
+
+        return null;
     }
 }

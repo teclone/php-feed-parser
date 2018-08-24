@@ -7,6 +7,7 @@ use Forensic\FeedParser\Enums\FeedItemTypes;
 use Forensic\FeedParser\XPath;
 use DOMElement;
 use Forensic\FeedParser\Traits\Parser;
+use Forensic\FeedParser\ParameterBag;
 
 class BaseFeedItem
 {
@@ -104,8 +105,14 @@ class BaseFeedItem
     {
         $this_property = '_' . $property;
         if (property_exists($this, $this_property))
-            return $this->{$this_property};
-        else
-            return null;
+        {
+            $value = $this->{$this_property};
+            if (is_array($value))
+                return new ParameterBag($value);
+            else
+                return $value;
+        }
+
+        return null;
     }
 }
