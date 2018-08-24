@@ -13,6 +13,7 @@ use Forensic\FeedParser\Exceptions\FeedTypeNotSupportedException;
 use Forensic\FeedParser\Feeds\ATOMFeed;
 use Forensic\FeedParser\Feeds\RSSFeed;
 use Forensic\FeedParser\Feeds\RDFFeed;
+use Forensic\FeedParser\ParameterBag;
 
 class ParserTest extends TestCase
 {
@@ -173,5 +174,24 @@ class ParserTest extends TestCase
             file_get_contents(__DIR__ . '/Helpers/Feeds/atom.xml')
         );
         $this->assertNull($feed->items[0]->random);
+    }
+
+    /**
+     * test if feed returns paramater bag for array properties such as image
+    */
+    public function testIfFeedReturnsParameterBag()
+    {
+        $feed = $this->_parser->parseFromFile(__DIR__ . '/Helpers/Feeds/rss.xml');
+        $this->assertInstanceOf(ParameterBag::class, $feed->image);
+    }
+
+    /**
+     * test if feed item returns paramater bag for array properties such as image
+     * and enclosure
+    */
+    public function testIfFeedItemReturnsParameterBag()
+    {
+        $feed = $this->_parser->parseFromFile(__DIR__ . '/Helpers/Feeds/rss.xml');
+        $this->assertInstanceOf(ParameterBag::class, $feed->items[0]->enclosure);
     }
 }
