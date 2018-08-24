@@ -11,6 +11,8 @@ use Forensic\FeedParser\FeedItems\ATOMFeedItem;
 use Forensic\FeedParser\FeedItems\RSSFeedItem;
 use Forensic\FeedParser\FeedItems\RDFFeedItem;
 use Forensic\FeedParser\ParameterBag;
+use ReflectionClass;
+use ReflectionProperty;
 
 class BaseFeed
 {
@@ -143,5 +145,46 @@ class BaseFeed
         }
 
         return null;
+    }
+
+    /**
+     * converts the feed to array
+     *@return array
+    */
+    public function toArray()
+    {
+        $reflector = new ReflectionClass(get_class($this));
+        $props = $reflector->getProperties(ReflectionProperty::IS_PROTECTED);
+
+        $result = [];
+
+        foreach($props as $prop)
+        {
+            $this_property_name = $prop->getName();
+            $property_name = substr($this_property_name, 1); //don't include underscore
+            if ($property_name === 'type')
+                $result[$property_name] = $this->{$this_property_name}->value();
+
+            else if ($property_name !== 'items')
+                $result[$property_name] = $this->{$this_property_name};
+        }
+
+        $items = [];
+
+        foreach($this->_items as $item)
+            $items[] = $item->toArray();
+
+        $result['items'] = $items;
+
+        return $result;
+    }
+
+    /**
+     * convert the feed to json
+     *@return string
+    */
+    public function toJSON()
+    {
+        return json_encode($this->toArray());
     }
 }

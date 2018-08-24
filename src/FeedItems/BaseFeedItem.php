@@ -8,6 +8,8 @@ use Forensic\FeedParser\XPath;
 use DOMElement;
 use Forensic\FeedParser\Traits\Parser;
 use Forensic\FeedParser\ParameterBag;
+use ReflectionProperty;
+use ReflectionClass;
 
 class BaseFeedItem
 {
@@ -115,5 +117,39 @@ class BaseFeedItem
         }
 
         return null;
+    }
+
+    /**
+     * converts the item to array
+     *@return array
+    */
+    public function toArray()
+    {
+        $reflector = new ReflectionClass(get_class($this));
+        $props = $reflector->getProperties(ReflectionProperty::IS_PROTECTED);
+
+        $result = [];
+
+        foreach($props as $prop)
+        {
+            $this_property_name = $prop->getName();
+            $property_name = substr($this_property_name, 1); //dont include the underscore
+            if ($property_name === 'type')
+                $result[$property_name] = $this->{$this_property_name}->value();
+
+            else
+                $result[$property_name] = $this->{$this_property_name};
+        }
+
+        return $result;
+    }
+
+    /**
+     * convert the feed to json
+     *@return string
+    */
+    public function toJSON()
+    {
+        return json_encode($this->toArray());
     }
 }
