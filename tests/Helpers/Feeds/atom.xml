@@ -1,0 +1,2054 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed
+    xmlns="http://www.w3.org/2005/Atom"
+    xmlns:thr="http://purl.org/syndication/thread/1.0">
+    <link rel="self" href="http://intertwingly.net/blog/index.atom"/>
+    <link rel="hub" href="http://pubsubhubbub.appspot.com/"/>
+    <id>http://intertwingly.net/blog/index.atom</id>
+    <icon>../favicon.ico</icon>
+    <title>Sam Ruby</title>
+    <subtitle>It’s just data</subtitle>
+    <author>
+        <name>Sam Ruby</name>
+        <email>rubys@intertwingly.net</email>
+        <uri>/blog/</uri>
+    </author>
+    <updated>2018-08-20T22:53:55-07:00</updated>
+    <link href="/blog/"/>
+    <link rel="license" href="http://creativecommons.org/licenses/BSD/"/>
+    <entry>
+        <id>tag:intertwingly.net,2004:3359</id>
+        <link href="/blog/2017/12/29/Realtime-Updates-of-Web-Content-Using-WebSockets"/>
+        <link rel="replies" href="3359.atom" thr:count="109" thr:updated="2018-08-18T21:58:58-07:00"/>
+        <title>Realtime Updates of Web Content Using WebSockets</title>
+        <summary type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <p>Three mini-demos showing how to implement realtime updates of web pages using WebSockets.</p>
+            </div>
+        </summary>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns='http://www.w3.org/2000/svg' width="175" height="57" viewBox="0 0 175 57">
+                    <path d='M60,2l12,12l-12,12l-12-12zM88,2l12,12l-12,12l-12-12zM116,2l12,12l-12,12l-12-12zM18,16l12,12l-12,12l-12-12zM46,16l12,12l-12,12l-12-12zM74,16l12,12l-12,12l-12-12zM102,16l12,12l-12,12l-12-12zM130,16l12,12l-12,12l-12-12zM158,16l12,12l-12,12l-12-12zM60,30l12,12l-12,12l-12-12zM88,30l12,12l-12,12l-12-12zM116,30l12,12l-12,12l-12-12z' fill='#bdbdc5'></path>
+                    <path stroke='#000' stroke-width='0.5' d='M7,27h26l13,13l14-14l14,14l28-28l14,14l14-14l15,15h26v3h-27l-14-14l-14,14l-14-14l-28,28l-14-14l-14,14l-14-14h-25z' fill='#ffd652'></path>
+                    <path d='M3,26h5v5h-5zM168,26h5v5h-5z'></path>
+                </svg>
+                <h3 id="preface">Preface</h3>
+                <p>You've seen web sites with stock prices or retweet counts that update in real time.  However, such sites are more the exception rather than the norm.
+                    <a href="https://tools.ietf.org/html/rfc6455">WebSockets</a> make it easy, and are
+                    <a href="https://caniuse.com/#feat=websockets">widely supported</a>, but not used as much as they could be.
+                </p>
+                <p>Examples provided for WebSockets typically don't focus on the &quot;pubsub&quot; use case; instead they tend to focus on echo servers and the occasional chat server.  These are OK as far as they go.</p>
+                <p>This post provides three mini-demos that implement the same design pattern in JavaScript on both the client and server.  </p>
+                <h3 id="quick_start">Quick Start</h3>
+                <p>For the impatient who want to see running code, </p>
+                <div>
+                    <pre>git clone https://github.com/rubys/websocket-demo.git
+cd websocket-demos
+npm install
+node server.js</pre>
+                </div>
+                <p>After running this, visit
+                    <a href="http://localhost:8080/">
+                        <code>http://localhost:8080/</code>
+                    </a> in a browser, and you should see something like this:
+                </p>
+                <style>  .screenshot {display: flex; width: 100%; border: 1px solid black}  .screenshot textarea, .screenshot div {flex: 1}  h3 {margin-top: 0}
+</style>
+                <div class="screenshot">
+                    <textarea disabled="disabled"># header  * one  * two  * three</textarea>
+                    <div>
+                        <h3>header</h3>
+                        <ul>
+                            <li>one</li>
+                            <li>two</li>
+                            <li>three</li>
+                        </ul>
+                    </div>
+                </div>
+                <h3 id="server_support">Server support</h3>
+                <p>The primary responsibility of the server is to maintain a list of active websocket connections.  The code below will maintain three such sets, one for each of the demos provided.</p>
+                <div>
+                    <pre>
+                        <span>// attach to web server</span>
+                        <span>var</span> wsServer =
+                        <span>new</span> websocket.server({
+                        <span>httpServer</span>: httpServer});
+
+
+                        <span>// three sets of connections</span>
+                        <span>var</span> connections = {
+                        <span>text</span>:
+                        <span>new</span> Set(),
+                        <span>html</span>:
+                        <span>new</span> Set(),
+                        <span>json</span>:
+                        <span>new</span> Set()
+};
+
+
+                        <span>// when a request comes in for one of these streams, add the websocket to the</span>
+                        <span>// appropriate set, and upon receipt of close events, remove the websocket</span>
+                        <span>// from that set.</span>
+wsServer.on(
+                        <span>
+                            <span>'</span>
+                            <span>request</span>
+                            <span>'</span>
+                        </span>, (request) =&gt; {
+                        <span>var</span> url = request.httpRequest.url.slice(
+                        <span>1</span>);
+                        <span>if</span> (!connections[url]) {
+                        <span>// reject request if not for one of the pre-identified paths</span>    request.reject();    console.log((
+                        <span>new</span> Date()) +
+                        <span>
+                            <span>'</span>
+                            <span></span>
+                            <span>'</span>
+                        </span> + url +
+                        <span>
+                            <span>'</span>
+                            <span> connection rejected.</span>
+                            <span>'</span>
+                        </span>);
+                        <span>return</span>;  };
+                        <span>// accept request and add to the connection set based on the request url</span>
+                        <span>var</span> connection = request.accept(
+                        <span>
+                            <span>'</span>
+                            <span>ws-demo</span>
+                            <span>'</span>
+                        </span>, request.origin);  console.log((
+                        <span>new</span> Date()) +
+                        <span>
+                            <span>'</span>
+                            <span></span>
+                            <span>'</span>
+                        </span> + url +
+                        <span>
+                            <span>'</span>
+                            <span> connection accepted.</span>
+                            <span>'</span>
+                        </span>);  connections[url].add(connection);
+                        <span>// whenever the connection closes, remove connection from the relevant set</span>  connection.on(
+                        <span>
+                            <span>'</span>
+                            <span>close</span>
+                            <span>'</span>
+                        </span>, (reasonCode, description) =&gt; {    console.log((
+                        <span>new</span> Date()) +
+                        <span>
+                            <span>'</span>
+                            <span></span>
+                            <span>'</span>
+                        </span> + url +
+                        <span>
+                            <span>'</span>
+                            <span> connection disconnected.</span>
+                            <span>'</span>
+                        </span>);    connections[url].
+                        <span>delete</span>(connection)  })
+});
+                    </pre>
+                </div>
+                <p>The code is fairly straightforward.  Three sets are defined; and when a request comes in it is either accepted or rejected based on the path part of the URL of the request.  If accepted, the connection is added to the appropriate set.  When a connection is closed, the connection is removed from the set.</p>
+                <p>EZPZ!</p>
+                <h3 id="client_support">Client Support</h3>
+                <p>The client's responsibitlity is to open the socket, and to keep it open.</p>
+                <div>
+                    <pre>
+                        <span>function</span>
+                        <span>subscribe</span>(path, callback) {
+                        <span>var</span> ws =
+                        <span>null</span>;
+                        <span>var</span> base = window.top.location.href
+                        <span>function</span>
+                        <span>openchannel</span>() {
+                        <span>if</span> (ws)
+                        <span>return</span>;
+                        <span>var</span> url =
+                        <span>new</span> URL(path, base.replace(
+                        <span>
+                            <span>'</span>
+                            <span>http</span>
+                            <span>'</span>
+                        </span>,
+                        <span>
+                            <span>'</span>
+                            <span>ws</span>
+                            <span>'</span>
+                        </span>));    ws =
+                        <span>new</span> WebSocket(url.href,
+                        <span>
+                            <span>'</span>
+                            <span>ws-demo</span>
+                            <span>'</span>
+                        </span>);    ws.onopen = (event) =&gt; {      console.log(path +
+                        <span>
+                            <span>'</span>
+                            <span> web socket opened!</span>
+                            <span>'</span>
+                        </span>);    };    ws.onmessage = (event) =&gt; {      callback(event.data);    };    ws.onerror = (event) =&gt; {      console.log(path +
+                        <span>
+                            <span>'</span>
+                            <span> web socket error:</span>
+                            <span>'</span>
+                        </span>);      console.log(event);      ws =
+                        <span>null</span>;    };    ws.onclose = (event) =&gt; {      console.log(path +
+                        <span>
+                            <span>'</span>
+                            <span> web socket closed</span>
+                            <span>'</span>
+                        </span>);      ws =
+                        <span>null</span>;    }  }
+                        <span>// open (and keep open) the channel</span>  openchannel();  setInterval(() =&gt; openchannel(),
+                        <span>2000</span>);
+}
+                    </pre>
+                </div>
+                <p>A subscribe method is defined that accepts a path and a callback.  The path is used to construct the URL to open.  The callback is called whenever a message is received.  Errors and closures cause the
+                    <code>ws</code> variable to be set to
+                    <code>null</code>.  Every two seconds, the
+                    <code>ws</code> variable is checked, and an attempt is made to reestablish the socket connection when this value is
+                    <code>null</code>.
+                </p>
+                <h3 id="textarea">First example - textarea</h3>
+                <p>Now it is time to put the sets of server
+                    <code>connections</code>, and client
+                    <code>subscribe</code> function to use.
+                </p>
+                <p>Starting with the client:</p>
+                <div>
+                    <pre>
+                        <span>var</span> textarea = document.querySelector(
+                        <span>
+                            <span>'</span>
+                            <span>textarea</span>
+                            <span>'</span>
+                        </span>);
+
+
+                        <span>// initially populate the textarea with the contents of data.txt from the</span>
+                        <span>// server</span>
+fetch(
+                        <span>
+                            <span>&quot;</span>
+                            <span>/data.txt</span>
+                            <span>&quot;</span>
+                        </span>).then((response) =&gt; {  response.text().then((body) =&gt; { textarea.value = body })
+});
+
+
+                        <span>// whenever the textarea changes, send the new value to the server</span>
+textarea.addEventListener(
+                        <span>
+                            <span>'</span>
+                            <span>input</span>
+                            <span>'</span>
+                        </span>, (event) =&gt; {  fetch(
+                        <span>
+                            <span>&quot;</span>
+                            <span>/data.txt</span>
+                            <span>&quot;</span>
+                        </span>, {
+                        <span>method</span>:
+                        <span>
+                            <span>'</span>
+                            <span>POST</span>
+                            <span>'</span>
+                        </span>,
+                        <span>body</span>: textarea.value});
+});
+
+
+                        <span>// whenever data is received, update textarea with the value</span>
+subscribe(
+                        <span>
+                            <span>'</span>
+                            <span>text</span>
+                            <span>'</span>
+                        </span>, (data) =&gt; { textarea.value = data });
+                    </pre>
+                </div>
+                <p>The value of the textarea is fetched from the server on page load.  Changes made to the textarea are posted to the server as they occur.  Updates received from the server are loaded into the textarea.  Nothing to it!</p>
+                <p>Now, onto the server:</p>
+                <div>
+                    <pre>
+                        <span>// Return the current contents of data.txt</span>
+app.get(
+                        <span>
+                            <span>'</span>
+                            <span>/data.txt</span>
+                            <span>'</span>
+                        </span>, (request, response) =&gt; { response.sendFile(dirname +
+                        <span>
+                            <span>'</span>
+                            <span>/data.txt</span>
+                            <span>'</span>
+                        </span>);
+});
+
+
+                        <span>// Update contents of data.txt</span>
+app.post(
+                        <span>
+                            <span>'</span>
+                            <span>/data.txt</span>
+                            <span>'</span>
+                        </span>, (request, response) =&gt; {
+                        <span>var</span> fd = fs.openSync(dirname +
+                        <span>
+                            <span>'</span>
+                            <span>/data.txt</span>
+                            <span>'</span>
+                        </span>,
+                        <span>
+                            <span>'</span>
+                            <span>w</span>
+                            <span>'</span>
+                        </span>); request.on(
+                        <span>
+                            <span>'</span>
+                            <span>data</span>
+                            <span>'</span>
+                        </span>, (data) =&gt; fs.writeSync(fd, data)); request.on(
+                        <span>
+                            <span>'</span>
+                            <span>end</span>
+                            <span>'</span>
+                        </span>, () =&gt; {   fs.closeSync(fd);   response.sendFile(dirname +
+                        <span>
+                            <span>'</span>
+                            <span>/data.txt</span>
+                            <span>'</span>
+                        </span>); })
+})
+
+
+                        <span>// watch for file system changes.  when data.txt changes, send new raw</span>
+                        <span>// contents to all /text connections.</span>
+fs.watch(dirname, {}, (event, filename) =&gt; {
+                        <span>if</span> (filename ==
+                        <span>
+                            <span>'</span>
+                            <span>data.txt</span>
+                            <span>'</span>
+                        </span>) {    fs.readFile(filename,
+                        <span>
+                            <span>'</span>
+                            <span>utf8</span>
+                            <span>'</span>
+                        </span>, (err, data) =&gt; {
+                        <span>if</span> (data &amp;&amp; !err) {
+                        <span>for</span> (connection of connections.text) {          connection.sendUTF(data)        };      }    })  }
+})
+                    </pre>
+                </div>
+                <p>Requests to get
+                    <code>data.txt</code> cause the contents of the file to be returned.  Post requests cause the contents to be updated.  It is the last block of code that we are most interested in here: the file system is watched for changes, and whenever
+                    <code>data.txt</code> is updated, it is read and the results are sent to each
+                    <code>text</code> connection.  Pretty straightforward!
+                </p>
+                <p>If you visit
+                    <a href="http://localhost:8080/textarea">
+                        <code>http://localhost:8080/textarea</code>
+                    </a> in multiple browser windows, you will see a textarea in each.  Updating any one window will update all.  What you have is the beginning of a collaborative editing application, though there would really need to be more logic put in place to properly serialize concurrent updates.
+                </p>
+                <h3 id="markdown">Second example - markdown</h3>
+                <p>The first example has the server sending plain text content.  This next example deals with HTML.  The
+                    <a href="https://www.npmjs.com/package/marked">marked</a> package is used to convert text to HTML on the server.
+                </p>
+                <p>This client is simpler in that it doesn't have to deal with sending updates to the server:</p>
+                <div>
+                    <pre>
+                        <span>// initially populate the textarea with the converted markdown obtained</span>
+                        <span>// from the server</span>
+fetch(
+                        <span>
+                            <span>&quot;</span>
+                            <span>/data.html</span>
+                            <span>&quot;</span>
+                        </span>).then((response) =&gt; {  response.text().then((body) =&gt; { document.body.innerHTML = body })
+});
+
+
+                        <span>// whenever data is received, update body with the data</span>
+subscribe(
+                        <span>
+                            <span>'</span>
+                            <span>html</span>
+                            <span>'</span>
+                        </span>, (data) =&gt; { document.body.innerHTML = data });
+                    </pre>
+                </div>
+                <p>The primary difference between this example and the previous one is that the content is placed into
+                    <code>document.body.innerHTML</code> instead of
+                    <code>textarea.value</code>.
+                </p>
+                <p>Like the client, the server portion of this demo consists of two blocks of code:</p>
+                <div>
+                    <pre>app.get(
+                        <span>
+                            <span>'</span>
+                            <span>/data.html</span>
+                            <span>'</span>
+                        </span>, (request, response) =&gt; {  fs.readFile(
+                        <span>
+                            <span>'</span>
+                            <span>data.txt</span>
+                            <span>'</span>
+                        </span>,
+                        <span>
+                            <span>'</span>
+                            <span>utf8</span>
+                            <span>'</span>
+                        </span>, (error, data) =&gt; {
+                        <span>if</span> (error) {      response.status(
+                        <span>404</span>).end();    }
+                        <span>else</span> {      marked(data, (error, content) =&gt; {
+                        <span>if</span> (error) {          console.log(error);          response.status(
+                        <span>500</span>).send(error);        }
+                        <span>else</span> {          response.send(content);        }      })    }  })
+});
+
+
+                        <span>// watch for file system changes.  when data.txt changes, send converted</span>
+                        <span>// markdown output to all /html connections.</span>
+fs.watch(dirname, {}, (event, filename) =&gt; {
+                        <span>if</span> (filename ==
+                        <span>
+                            <span>'</span>
+                            <span>data.txt</span>
+                            <span>'</span>
+                        </span>) {    fs.readFile(filename,
+                        <span>
+                            <span>'</span>
+                            <span>utf8</span>
+                            <span>'</span>
+                        </span>, (err, data) =&gt; {
+                        <span>if</span> (data &amp;&amp; !err) {        marked(data, (err, content) =&gt; {
+                        <span>if</span> (!err) {
+                        <span>for</span> (connection of connections.html) {              connection.sendUTF(content);            }          }        })      }    })  }
+})
+                    </pre>
+                </div>
+                <p>The salient difference between this example and the previous example is call to the
+                    <code>marked</code> function to perform the conversion.
+                </p>
+                <p>If you visit
+                    <a href="http://localhost:8080/markdown">
+                        <code>http://localhost:8080/markdown</code>
+                    </a>, you will see the text converted to markdown.  You can also visit
+                    <a href="http://localhost:8080/">
+                        <code>http://localhost:8080/</code>
+                    </a> to see both of these demos side by side, in separate frames.  Updates make in the window on the left will be reflected on the right.
+                </p>
+                <p>No changes were required to the first demo to make this happen as both demos watch for file system changes.  In fact, you can edit
+                    <code>data.txt</code> on the server with your favorite text area and whenever you save your changes all clients will be updated.
+                </p>
+                <h3 id="json">Final example - JSON</h3>
+                <p>In this final example, the server will be sending down a recursive directory listing, complete with file names, sizes, and last modified dates.  On the client,
+                    <a href="https://vuejs.org/">Vue.js</a> will be used to present the data.  We start with a template:
+                </p>
+                <div>
+                    <pre>&lt;tbody&gt;  &lt;tr v-for=&quot;file in filelist&quot;&gt;    &lt;td&gt;{{ file.name }}&lt;/td&gt;    &lt;td&gt;{{ file.size }}&lt;/td&gt;    &lt;td&gt;{{ file.mtime }}&lt;/td&gt;  &lt;/tr&gt;
+&lt;/tbody&gt;</pre>
+                </div>
+                <p>And add a bit of code:</p>
+                <div>
+                    <pre>
+                        <span>var</span> app =
+                        <span>new</span> Vue({
+                        <span>el</span>:
+                        <span>
+                            <span>'</span>
+                            <span>tbody</span>
+                            <span>'</span>
+                        </span>,
+                        <span>data</span>: {
+                        <span>filelist</span>: []}});
+
+fetch(
+                        <span>
+                            <span>'</span>
+                            <span>filelist.json</span>
+                            <span>'</span>
+                        </span>).then((response) =&gt; {  response.json().then((json) =&gt; { app.filelist = json });
+});
+
+subscribe(
+                        <span>
+                            <span>'</span>
+                            <span>json</span>
+                            <span>'</span>
+                        </span>, (data) =&gt; { app.filelist = JSON.parse(data) });
+                    </pre>
+                </div>
+                <p>The first line associates some data (initially an empty array) with an HTML element (in this case
+                    <code>tbody</code>).  The remaining code should look very familiar by now.  Because of the way Vue.js works, all that is required to update the display is to update the data.
+                </p>
+                <p>The server side should also seem pretty familiar:</p>
+                <div>
+                    <pre>app.get(
+                        <span>
+                            <span>'</span>
+                            <span>/dir.json</span>
+                            <span>'</span>
+                        </span>, (request, response) =&gt; {  response.json(stats(dirname));
+});
+
+fs.watch(dirname, {
+                        <span>recursive</span>:
+                        <span>true</span>}, (event, filename) =&gt; {
+                        <span>var</span> data = JSON.stringify(stats(dirname));
+                        <span>for</span> (connection of connections.json) {    connection.sendUTF(data)  }
+})
+                    </pre>
+                </div>
+                <p>Not shown is the code that extracts the information from the filesystem, the rest is the same basic pattern that has been used for each of these demos.</p>
+                <p>If you visit
+                    <a href="http://localhost:8080/filelist">
+                        <code>http://localhost:8080/filelist</code>
+                    </a>, you will see a table showing each of the files on the server.  This list will be updated whenever you create, delete, or update any file.  The server will push a new (and complete) set of data, and Vue.js will determine what needs to be changed in the browser window.  All this generally takes place in a fraction of a second.
+                </p>
+                <p>Vue.js is only one such framework that can be used in this way.
+                    <a href="https://angular.io/">Angular</a>,
+                    <a href="https://www.emberjs.com/">Ember.js</a>, and
+                    <a href="https://reactjs.org/">React</a> are additional frameworks that are worth exploring.
+                </p>
+                <h3 id="recap">Recap</h3>
+                <p>By focusing on file system modified events, these demos have tried to demonstrate server initiated updates.</p>
+                <p>With comparatively little code, web sites can be prepared to receive and apply unsolicited updates from the server.  The granularity of the updates can be as little as a single string, can be a HTML fragment, or can be arbitrary data encoded in JSON.</p>
+                <p>Reserving web sockets for server initiated broadcast operations can keep your code small and understandable. Traditional HTTP GET and POST requests can be used for all client initiated retrieval and update operations.</p>
+                <p>This makes the division of labor between the client and server straightforward: the server is responsible for providing state -- both on demand and as the state changes.  The client is responsible for updating the view to match the state.</p>
+            </div>
+        </content>
+        <updated>2017-12-29T09:18:24-08:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3358</id>
+        <link href="/blog/2017/12/06/Achieving-Response-Time-Goals-with-Service-Workers"/>
+        <link rel="replies" href="3358.atom" thr:count="148" thr:updated="2018-08-18T02:19:29-07:00"/>
+        <title>Achieving Response Time Goals with Service Workers</title>
+        <summary type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <p>Blending cache and live responses in order to achieve response time goals.</p>
+            </div>
+        </summary>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+                    <g transform="translate(-5,100) scale(0.035,-0.035)" fill="#000" stroke="none">
+                        <path d="M1041 2503 c-32 -92 -63 -139 -111 -163 -61 -31 -120 -26 -213 17
+l-78 37 -79 -79 c-44 -44 -80 -85 -80 -91 0 -7 16 -45 35 -85 40 -84 44 -133
+16 -195 -25 -54 -57 -77 -152 -111 l-79 -28 0 -120 0 -120 79 -28 c95 -34 127
+-57 152 -111 28 -62 24 -111 -16 -195 -19 -40 -35 -78 -35 -85 0 -6 36 -47 80
+-91 l79 -79 78 37 c93 43 152 48 213 17 48 -24 79 -71 111 -163 l23 -68 119 3
+119 3 28 78 c59 166 152 205 313 130 l78 -37 85 86 86 85 -35 69 c-44 87 -51
+122 -37 174 18 68 68 114 160 146 l80 27 0 122 0 122 -80 27 c-92 32 -142 78
+-160 146 -14 52 -7 87 37 174 l35 69 -86 85 -85 86 -78 -37 c-161 -75 -254
+-36 -313 130 l-28 78 -119 3 -119 3 -23 -68z m286 -533 c63 -31 112 -80 149
+-150 27 -50 27 -220 0 -270 -38 -71 -86 -119 -153 -152 -132 -65 -274 -38
+-375 70 -113 121 -116 309 -5 429 106 115 245 141 384 73z"></path>
+                        <path d="M2306 1346 c-13 -30 -33 -59 -44 -65 -31 -17 -78 -13 -121 8 l-38 20
+-43 -44 -43 -44 16 -43 c35 -91 12 -144 -72 -169 l-42 -12 3 -65 3 -65 40 -14
+c60 -20 88 -57 82 -107 -2 -23 -10 -56 -18 -73 -13 -32 -12 -34 26 -73 21 -22
+44 -40 51 -40 6 0 31 9 55 19 74 32 124 8 152 -74 l14 -40 61 -3 62 -3 25 56
+c19 44 32 59 59 70 32 14 40 13 92 -6 l56 -21 43 42 44 43 -20 38 c-40 79 -18
+138 62 169 l44 18 3 64 3 65 -42 12 c-85 26 -111 89 -70 170 l20 38 -47 46
+-47 46 -35 -19 c-79 -43 -145 -16 -171 69 l-12 41 -64 0 -63 0 -24 -54z m161
+-262 c86 -41 119 -153 69 -238 -60 -103 -193 -114 -273 -23 -120 137 38 339
+204 261z"></path>
+                        <path d="M1586 820 c-7 -40 -31 -48 -60 -21 -27 25 -34 26 -64 3 -19 -15 -21
+-22 -13 -43 14 -38 0 -53 -43 -46 -33 5 -38 3 -52 -25 -15 -28 -14 -31 6 -54
+28 -29 20 -52 -20 -61 -28 -5 -31 -9 -28 -41 3 -31 7 -37 36 -44 38 -10 42
+-32 11 -64 -19 -21 -20 -24 -5 -52 15 -28 18 -30 48 -21 42 12 62 -9 47 -49
+-10 -26 -8 -29 34 -53 15 -8 24 -6 41 10 31 29 45 26 62 -14 12 -29 19 -35 44
+-35 25 0 32 6 44 35 17 40 31 43 62 14 21 -19 24 -20 52 -5 27 14 30 19 25 54
+-6 46 3 55 46 42 29 -8 32 -6 47 22 15 29 14 31 -7 54 -27 29 -18 55 22 64 19
+5 25 13 27 42 3 32 1 36 -28 41 -41 9 -48 32 -19 63 22 24 22 26 7 52 -15 24
+-22 27 -58 24 l-42 -4 4 42 c3 36 0 43 -24 58 -26 15 -28 15 -52 -7 -31 -29
+-54 -22 -62 19 -6 27 -10 30 -44 30 -34 0 -38 -3 -44 -30z m91 -175 c12 -3 34
+-20 48 -36 30 -36 35 -111 9 -147 -49 -71 -170 -67 -209 8 -36 70 -3 159 68
+179 32 9 41 8 84 -4z"></path>
+                    </g>
+                </svg>
+                <p>Service Workers enable a web application to be responsive even if the network isn't.  Frameworks like
+                    <a href="https://angularjs.org/">AngularJS</a>,
+                    <a href="https://reactjs.org/">React</a> and
+                    <a href="https://vuejs.org/">Vue.js</a> enable web applications to efficiently update and render web pages as data changes.
+                </p>
+                <p>The Apache Software Foundation's
+                    <a href="https://github.com/apache/whimsy/tree/master/www/board/agenda">Whimsy board agenda</a> application uses both in combination to achieve a responsive user experience - both in terms of quick responses to user requests and quick updates based on changes made on the server.
+                </p>
+                <p>From a performance perspective, the two cases easiest to optimize for are (1) the server fully up and running accessed across a fast network with all possible items cached, and (2) the application fully offline as once you make offline possible at all, it will be fast.</p>
+                <p>The harder cases ones where the server has received a significant update and needs to get that information to users, and even harder is when the server has no instances running and needs to spin up a new instance to process a request.  While it is possible to do
+                    <a href="https://docs.cloudfoundry.org/devguide/deploy-apps/blue-green.html">blue/green</a> deployment for applications that are &quot;always on&quot;, this isn't practical or appropriate for applications which only used in periodic bursts.  The board agenda tool is one such application.
+                </p>
+                <p>This article describes how a goal of sub-second response time is achieved in such an environment.  There are plenty of articles on the web that show snippets or sanitized approaches, this one focuses on real world usage.</p>
+                <h3 id="introduction">Introduction to Service Workers</h3>
+                <p>
+                    <a href="https://w3c.github.io/ServiceWorker/">Service Workers</a> are JavaScript files that can intercept and provide responses to navigation and resource requests.  Service Workers
+                    <a href="https://caniuse.com/#search=serviceworker">are supported</a> today by Chrome and FireFox, and are under development in Microsoft Edge and WebKit/Safari.
+                </p>
+                <p>Service Workers are part of a larger effort dubbed &quot;
+                    <a href="https://developers.google.com/web/progressive-web-apps/">Progressive Web Apps</a>&quot; that aim to make web applications reliable and fast, no matter what the state of the network may happen to be.  The word &quot;progressive&quot; in this name is there to indicate that these applications will work with any browser to the best of that browser's ability.
+                </p>
+                <p>The signature or premier feature of Service Workers is
+                    <a href="https://hacks.mozilla.org/2015/11/offline-service-workers/">offline</a> applications.  Such web applications are loaded normally the first time, and cached.  When offline, requests are served by the cache, and any input made by users can be stored in
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage">local storage</a> or in an
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API">index db</a>.
+                </p>
+                <p>
+                    <a href="https://serviceworke.rs/">serviceworke.rs</a> and
+                    <a href="https://developers.google.com/web/fundamentals/instant-and-offline/offline-cookbook/">The Offline Cookbook</a> provide a number of recipes that can be used.
+                </p>
+                <h3 id="board-agenda-overview">Overview of the Board Agenda Tool</h3>
+                <p>This information is for background purposes only.  Feel free to skim or skip.</p>
+                <p>The ASF Board meets monthly, and
+                    <a href="https://www.apache.org/foundation/board/calendar.html">minutes</a> are published publicly on the web.  A typical meeting has over one hundred agenda items, though the board agenda tool assists in resolving most off them offline, leaving a manageable 9 officer reports, around 20 PMC reports that may or may not require action, and a handful of special orders.
+                </p>
+                <p>While the full agenda is several thousand lines long, this file size is only a quarter of a megabyte or the size of a small image.  The server side of this application parses the agenda and presents it to the client in JSON format, and the result is roughly the same size as the original.</p>
+                <p>To optimize the response of the first page access, the server is structured to do
+                    <a href="https://vuejs.org/v2/guide/ssr.html">server side rendering</a> of the page that is requested, and the resulting response starts with links to stylesheets, then contains the rendered HTML, and finally any scripts and data needed.  This allows the browser to incrementally render the page as it is received.  This set of scripts includes a script that can render any page (or component) that the board agenda tool can produce, and the data includes all the information necessary to do so.  The current implementation is based on Vue.js.
+                </p>
+                <p>Once loaded, traversals between pages is immeasurably quick.  By that I mean that you can go to the first page and lean on the right arrow button and pages will smoothly scroll through the pages by at roughly the rate at which you can see the faces in a deck of cards shuffled upside down.</p>
+                <p>The pages generally contain buttons and hidden forms; which buttons appear often depends on the user who requests the page.  For example, only Directors will see approve and unapprove buttons; and individual directors will only see one of these two buttons based on whether or not they have already approved the report.</p>
+                <p>A
+                    <a href="https://tools.ietf.org/html/rfc6455">WebSocket</a> between the server and client is made mostly so the server can push changes to each client; changes that then cause re-rendering and updated displays.  Requests from the client to the server generally are done via
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest">XMLHttpRequest</a> as it wasn't until very recently that Safari
+                    <a href="https://caniuse.com/#feat=fetch">supported fetch</a>.  IE still doesn't, but Edge does.
+                </p>
+                <p>Total (uncompressed) size of the application script is another quarter of a megabyte, and dependencies include Vue.js and
+                    <a href="https://getbootstrap.com/">Bootstrap</a>, the latter being the biggest requiring over a half a megabyte of minimized CSS.
+                </p>
+                <p>All scripts and stylesheets are served with a
+                    <a href="https://hacks.mozilla.org/2017/01/using-immutable-caching-to-speed-up-the-web/">Cache-Control: immutable</a> header as well as an expiration date a year from when the request was made.  This is made possible by the expedient of utilizing a cache
+                    <a href="https://css-tricks.com/strategies-for-cache-busting-css/">busting query string</a> that contains the last modified date.
+                    <a href="https://tools.ietf.org/html/rfc7232#section-2.3">Etag</a> and
+                    <a href="https://httpstatuses.com/304">304</a> responses are also supported.
+                </p>
+                <p>Offline support was added recently.  Updates made when offline are stored in an
+                    <a href="https://www.w3.org/TR/IndexedDB-2/">IndexDB</a> and sent as a batch when the user returns online.  Having all of the code and data to render any page made this support very straightforward.
+                </p>
+                <h3 id="performance-observations">Performance observations (pre-optimization)</h3>
+                <p>As mentioned at the top of this article, offline operations are virtually instantaneous.  Generally, immeasurably so.  As described above, this also applies to transitions between pages.</p>
+                <p>This leaves the initial visit, and returning visits, the latter includes opening the application in new tabs.</p>
+                <p>Best case response times for these cases is about a second.  This may be due to the way that server side rendering is done or perhaps due to the fact that each page is customized to the individual.  Improving on this is not a current priority, though the solution described later in this article addresses this.</p>
+                <p>Worst case response times are when there are no active server processes and all caches (both server side and client side) are either empty or stale.  It is hard to get precise numbers for this, but it is on the order of eight to ten seconds.  Somewhere around four is the starting of the server.  Building the JSON form of the agenda can take another two given all of the validation (involving things like LDAP queries) involved in the process.  Regenerating the ES5 JavaScript from sources can take another second or so.  Producing the custom rendered HTML is another second.  And then there is all of the client side processing.</p>
+                <p>In all, probably just under ten seconds if the server is otherwise idle.  It can be a little more if the server is under moderate to heavy load.</p>
+                <p>The worst parts of this:</p>
+                <ol>
+                    <li>No change is seen on the browser window until the last second or so.</li>
+                    <li>While the worst case scenario is comparatively rare in production, it virtually precisely matches what happens in development.</li>
+                </ol>
+                <h3 id="selecting-approach">Selecting an approach</h3>
+                <p>Given that the application can be brought up quickly in an entirely offline mode, one possibility would be to show the last cached status and then request updated information and process that information when received.  This approach works well if the only change is to agenda data, but doesn't work so well in production whenever a script change is involved.</p>
+                <p>This can be solved with a
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Location/reload">window.location.reload()</a> call, which is described (and somewhat discouraged) as
+                    <a href="https://redfin.engineering/how-to-fix-the-refresh-button-when-using-service-workers-a8e27af6df68#793f">approach #2 in Dan Fabulic's &quot;How to Fix the Refresh Button When Using Service Workers&quot;</a>.  Note the code below was written before Dan's page was published, but in any case, Dan accurately describes the issue.
+                </p>
+                <p>Taking some measurements on this produces interesting results.  What is needed to determine if a script or stylesheet has changed is a current inventory from the server.  This can consistently be provided quickly and is independent of the user requesting the data, so it can be cached.  But since the data size is small enough, caching (in the sense of HTTP 304 reponses) isn't all that helpful.</p>
+                <p>Response time for this request in realistic network conditions when there is an available server process is around 200 milliseconds, and doesn't tend to vary very much.</p>
+                <p>The good news is that this completely addresses the &quot;reload flash&quot; problem.</p>
+                <p>Unfortunately, the key words here are &quot;available server process&quot; as that was the original problem to solve.</p>
+                <p>Fortunately, a combination approach is possible:</p>
+                <ol>
+                    <li>Attempt to fetch the inventory page from the network, but give it a deadline that it should generally beat.  Say, 500 milliseconds or a half a second.</li>
+                    <li>If the deadline isn't met, load potentially stale data from the cache, and request newer data.  Once the network response is received (which had a 500 millisecond head start), determine if any scripts or stylesheets changed.  If not, we are done.</li>
+                    <li>Only if the deadline wasn't met AND there was a change to a stylesheet or more commonly a script, perform a reload; and figure out a way to address the poor user experience associated with a reload.</li>
+                </ol>
+                <p>Additional exploration lead to the solution where the inventory page mentioned below could be formatted in HTML and, in fact, be the equivalent to a blank agenda page.  Such a page would still be less than 2K bytes, and performance would be equivalent to loading a blank page and then navigating to the desired page, in other words, immeasurably fast.</p>
+                <h3 id="implementation">Implementation</h3>
+                <p>If you look at existing
+                    <a href="https://serviceworke.rs/">recipes</a>,
+                    <a href="https://serviceworke.rs/strategy-network-or-cache.html">Network or Cache</a> is pretty close; the problem is that it leaves the user with stale data if the network is slow.  It can be improved upon.
+                </p>
+                <p>Starting with the fetch from the network:</p>
+                <div>
+                    <pre>
+                        <code class="language-none">  // attempt to fetch bootstrap.html from the network  fetch(request).then(function(response) {    // cache the response if OK, fulfill the response if not timed out    if (response.ok) {      cache.put(request, response.clone());      // preload stylesheets and javascripts      if (/bootstrap\.html$/.test(request.url)) {        response.clone().text().then(function(text) {          var toolate = !timeoutId;          setTimeout(            function() {              preload(cache, request.url, text, toolate)            },            (toolate ? 0 : 3000)          )        })      };      if (timeoutId) {        clearTimeout(timeoutId);        resolve(response)      }    } else {      // bad response: use cache instead      replyFromCache(true)    }  }).catch(function(failure) {    // no response: use cache instead    replyFromCache(true)  })</code>
+                    </pre>
+                </div>
+                <p>This code needs to be wrapped in a Promise that provides a
+                    <code>resolve</code> function, and needs access to a
+                    <code>cache</code> as well as a variable named
+                    <code>timeoutid</code> and that determines whether or not the response has timed out.
+                </p>
+                <p>If the response is ok, it and will be cached and a
+                    <code>preload</code> method will be called to load resources mentioned in the page.  That will either be done immediately if not
+                    <code>toolate</code>, or after a short delay the timer expired to allow updates to be processed.  Finally, if such a response was received in time, the timer will be cleared, and the promise will be resolved.
+                </p>
+                <p>If either a bad response or no response was received (typically, this represents a network failure), the cache will be used instead.</p>
+                <p>Next the logic to reply from the cache:</p>
+                <div>
+                    <pre>
+                        <code class="language-none">  // common logic to reply from cache  var replyFromCache = function(refetch) {    return cache.match(request).then(function(response) {      clearTimeout(timeoutId);      if (response) {        resolve(response);        timeoutId = null      } else if (refetch) {        fetch(event.request).then(resolve, reject)      }    })  };  // respond from cache if the server isn't fast enough  timeoutId = setTimeout(function() {replyFromCache(false)}, timeout);</code>
+                    </pre>
+                </div>
+                <p>This code looks for a cache match, and if it finds one, it will
+                    <code>resolve</code> the response, and clear the
+                    <code>timeoutId</code> enabling the fetch code to detect if it was too late.
+                </p>
+                <p>If no response is found, the action taken will be determined by the
+                    <code>refetch</code> argument.  The fetch logic above passes
+                    <code>true</code> for this, and the timeout logic passes
+                    <code>false</code>.  If true, it will retry the original request (which presumably will fail) and return that result to the user.  This is handling a
+                    <em>never should happen</em> scenario where the cache doesn't contain the bootstrap page.
+                </p>
+                <p>The above two snippets of code are then wrapped by a function, providing the
+                    <code>event</code>,
+                    <code>resolve</code>,
+                    <code>reject</code>, and
+                    <code>cache</code> variables, as well as declaring and initializing the
+                    <code>timeoutId</code> variable:
+                </p>
+                <div>
+                    <pre>
+                        <code class="language-none">// Return a bootstrap.html page within 0.5 seconds.  If the network responds
+// in time, go with that response, otherwise respond with a cached version.
+function bootstrap(event, request) {  return new Promise(function(resolve, reject) {    var timeoutId = null;    caches.open(&quot;board/agenda&quot;).then(function(cache) {        ...    }
+})</code>
+                    </pre>
+                </div>
+                <p>Next, we need to implement the
+                    <code>preload</code> function:
+                </p>
+                <div>
+                    <pre>
+                        <code class="language-none">// look for css and js files and in HTML response ensure that each are cached
+function preload(cache, base, text, toolate) {  var pattern = /&quot;[-.\w+/]+\.(css|js)\?\d+&quot;/g;  var count = 0;  var changed = false;  while (match = pattern.exec(text)) {    count++;    var path = match[0].split(&quot;\&quot;&quot;)[1];    var request = new Request(new URL(path, base));    cache.match(request).then(function(response) {      if (response) {        count--      } else {        fetch(request).then(function(response) {          if (response.ok) cacheReplace(cache, request, response);          count--;          if (count == 0 &amp;&amp; toolate) {            clients.matchAll().then(function(clients) {              clients.forEach(function(client) {                client.postMessage({type: &quot;reload&quot;})              })            })          }        })      }    })  }
+};</code>
+                    </pre>
+                </div>
+                <p>This code parses the HTML response, looking for
+                    <code>.css</code>, and
+                    <code>.js</code> files, based on a knowledge as to how this particular server will format the HTML.  For each such entry in the HTML, the cache is searched for a match.  If one is found, nothing more needs to be done.  Otherwise, the resource is fetched and placed in the cache.
+                </p>
+                <p>Once all requests are processed, and if this involved requesting a response from the network, then a check is made to see if this was a late response, and if so, a
+                    <code>reload</code> request is sent to all client windows.
+                </p>
+                <p>
+                    <code>cacheReplace</code> is another application specific function:
+                </p>
+                <div>
+                    <pre>
+                        <code class="language-none">// insert or replace a response into the cache.  Delete other responses
+// with the same path (ignoring the query string).
+function cacheReplace(cache, request, response) {  var path = request.url.split(&quot;?&quot;)[0];  cache.keys().then(function(keys) {    keys.forEach(function(key) {      if (key.url.split(&quot;?&quot;)[0] == path &amp;&amp; key.url != path) {        cache.delete(key).then(function() {})      }    })  });  cache.put(request, response)
+};</code>
+                    </pre>
+                </div>
+                <p>The purpose of this method is as stated: to delete from the cache other responses that differ only in the query string.  It also adds the response to the cache.</p>
+                <p>The remainder is either straightforward or application specific in a way that has no performance relevance.  The scripts and stylesheets are served with a
+                    <a href="https://jakearchibald.com/2014/offline-cookbook/#cache-falling-back-to-network">cache falling back to network</a> strategy.  The initial preloading which normally could be as simple as a call to
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Cache/addAll">cache.addAll</a> needs to be aware of query strings and for this application it turns out that a different bootstrap HTML file is needed for each meeting.
+                </p>
+                <p>Finally, here is the client side logic which handles reload messages from the service worker:</p>
+                <div>
+                    <pre>
+                        <code class="language-none">navigator.serviceWorker.register(scope + &quot;sw.js&quot;, scope).then(function() {  // watch for reload requests from the service worker  navigator.serviceWorker.addEventListener(&quot;message&quot;, function(event) {    if (event.data.type == &quot;reload&quot;) {      // ignore reload request if any input or textarea element is visible      var inputs = document.querySelectorAll(&quot;input, textarea&quot;);      if (Math.max.apply(        Math,        Array.prototype.slice.call(inputs).map(function(element) {          return element.offsetWidth        })      ) &lt;= 0) window.location.reload()    }  });
+}</code>
+                    </pre>
+                </div>
+                <p>This code watches for
+                    <code>type: &quot;reload&quot;</code> messages from the service worker and invokes
+                    <code>window.location.reload()</code> only if there are no input or text area elements visible, which is determined using the
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/offsetWidth">
+                        <code>offsetWidth</code>
+                    </a> property of each element.  Very few board agenda pages have visible input fields by default; many, however, have
+                    <a href="https://getbootstrap.com/docs/4.0/components/modal/">bootstrap modal dialog boxes</a> containing forms.
+                </p>
+                <h3 id="performance-results">Performance Results</h3>
+                <p>In production when using a browser that supports Service Workers, requests for the bootstrap page now typically range from 100 to 300 milliseconds, with the resulting page fully loaded in 400 to 600 milliseconds.  Generally, this includes the time it takes to fetch and render updated data, but in rare cases that may take up to an additional 200 milliseconds.</p>
+                <p>In development, and in production when there are no server processes available and when accessed using a browser that supports Service Workers, the page initially loads in 700 to 1200 milliseconds.  It is not clear to me why this sees a greater range of response times; but in any case, this is still a notable improvement.  Often in development, and in rare cases in production, there may be a noticeable refresh that occurs one to five seconds later.</p>
+                <p>Visitations by browsers that do not support service workers, and for that matter the first time a new user visits the board agenda tool, do not see any performance improvement or degradation with these changes.</p>
+                <p>Not a bad result from less than 100 lines of code.</p>
+            </div>
+        </content>
+        <updated>2017-12-06T13:23:55-08:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3357</id>
+        <link href="/blog/2017/09/11/Converting-to-Vue-js"/>
+        <link rel="replies" href="3357.atom" thr:count="81" thr:updated="2018-08-18T02:20:49-07:00"/>
+        <title>Converting to Vue.js</title>
+        <summary type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <p>I’m in the process of converting four
+                    <a href="https://whimsical.apache.org/">Whimsy</a> applications from React.js to Vue; and I’m taking a moment to jot down a list of things I like a lot, things I find valuable, things I dislike (but can work around), and things I’m not using.
+                </p>
+                <p>On balance, so far I like Vue better than React.js (even ignoring licensing issues) or Angular.js, and am optimistic that Vue will continue to improve.</p>
+            </div>
+        </summary>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+                    <path d="M0,6h38l12,20l12-20h38l-50,87Z" fill="#4dba87"></path>
+                    <path d="M20,6h18l12,20l12-20h18l-30,52Z" fill="#435466"></path>
+                </svg>
+                <p>
+                    <a href="https://whimsical.apache.org/">Whimsy</a> had four applications which made use of React.js; two of which previously were written using Angular.js.  One of these applications has already been converted to Vue, conversion of a second one is in progress.
+                </p>
+                <p>The reason for the conversion was the decision by Facebook not to change their
+                    <a href="https://code.facebook.com/posts/112130496157735/explaining-react-s-license/">license</a>.
+                </p>
+                <p>Selection of Vue was based on two criteria: community size and the ability to support a React-like development model.  As a bonus, Vue supports an Angular-like development model too, is smaller in download size than either, and has a few additional features.  It is also
+                    <a href="https://vuejs.org/v2/guide/comparison.html#Performance">fast</a>, though I haven’t done any formal measurements.
+                </p>
+                <p>Note that the API is different than React.js’s, in particular lifecycle methods and event names.  Oh, and the parameters to createElement are completely different.  Much of my conversion was made easier by the fact that I was already using a
+                    <a href="http://intertwingly.net/blog/2015/01/22/React-rb">ruby2js filter</a>, so all I needed to do was to write a new filter.
+                </p>
+                <p>Things I like a lot:</p>
+                <ul>
+                    <li>Setters actually change the values synchronously.  This has been a source of subtle bugs and surprises when implementing a React.js application.</li>
+                    <li>Framework can be used without preprocessors.  This is mostly true for React, but React.createClass is now
+                        <a href="https://facebook.github.io/react/blog/2017/04/07/react-v15.5.0.html#migrating-from-react.createclass">deprecated</a>.
+                    </li>
+                </ul>
+                <p>Things I find valuable:</p>
+                <ul>
+                    <li>
+                        <a href="https://vuejs.org/v2/guide/mixins.html">Mixins</a>.  And probably in the near future
+                        <a href="https://vuejs.org/v2/api/#Vue-extend">extends</a>.  These make components true building blocks, not mere means of encapsulation.
+                    </li>
+                    <li>
+                        <a href="https://vuejs.org/v2/guide/computed.html">Computed values</a>.  Better than Angular’s watchers, and easier than React’s componentWillReceiveProps.
+                    </li>
+                    <li>
+                        <a href="https://vuejs.org/v2/guide/events.html">Events</a>.  I haven’t made much use of these yet, but this looks promising.
+                    </li>
+                </ul>
+                <p>Things I dislike (but can work around):</p>
+                <ul>
+                    <li>Warnings are issued if property and data values are named the same.  I can understand
+                        <a href="https://github.com/vuejs/vue/issues/1166">why</a> this was done; but I can access properties and data separately, and I’m migrating a codebase which often uses properties to define the initial values for instance data. It would be fine if there were a way to silence this one warning, but the only option available is to silence
+                        <a href="https://vuejs.org/v2/api/#silent">all warnings</a>.
+                    </li>
+                    <li>If I have a logic error in my application (it happens :-)), the stack traceback on Chrome doesn’t show my application.  On firefox, it does, but it is formatted oddly, and doesn’t make use of source maps so I can’t directly navigate to either the original source or the downloaded code.</li>
+                    <li>Mounting an element replaces the entire element instead of just its children.  In my case, I’m doing server side rendering followed by client side updates.  Replacing the element means that the client can’t find the mount point.  My workaround is to add the enclosing element to the render.</li>
+                    <li>Rendering on both the server and client can create a timing problem for forms.  At times, there can be just enough of a delay where the user can check a box or start to input data only to have Vue on the client wipe out the input.  I’m not sure why this wasn’t a problem with React.js, but for now I’m rendering the input fields as disabled until mounted on the client.</li>
+                </ul>
+                <p>Things I’m not using:</p>
+                <ul>
+                    <li>templates, directives, and filters.  Mostly because I’m migrating from React instead of Angular.  But also because I like components better than those three.</li>
+                </ul>
+                <p>On balance, so far I like Vue best of the three (even ignoring licensing issues), and am optimistic that Vue will continue to improve.</p>
+            </div>
+        </content>
+        <updated>2017-09-11T11:35:11-07:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3356</id>
+        <link href="/blog/2017/04/07/Badges-We-dont-need-no-stinkin-badges"/>
+        <link rel="replies" href="3356.atom" thr:count="114" thr:updated="2018-08-20T01:22:31-07:00"/>
+        <title>Badges? We don't need no stinkin' badges!</title>
+        <summary type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">I found myself included in an IBM Resource Action ("RA").  I’m fine, nothing has changed.  I’m already working with a non-profit, namely the
+                <a href="https://www.apache.org/">Apache Software Foundation</a>, and find my work there to be very rewarding.
+            </div>
+        </summary>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns="http://www.w3.org/2000/svg" width="158" height="61" viewBox="0 0 158 61">
+                    <path d="M0,0v5h31v-5M35,0v5h45c0,0-4-4-9-5M88,0v5h27l-2-5M133,0l-2,5h27v-5M0,8v5h31v-5M35,8v5h49c0,0,0-3-2-5M88,8v5h30l-2-5M130,8l-2,5h30v-5M9,16v5h13v-5M44,16v5h13v-5M70,16v5h13s1,-2,1,-5M96,16v5h25l-2-5M127,16l-2,5h24v-5M9,24v5h13v-5M44,24v5h34s3-3,4-5M96,24v5h14v-3l1,3h24l1-3v3h13v-5h-25l-1,3l-1-3M9,32v5h13v-5M44,32v5h39s-2-4-4-5M96,32v5h14v-5M112,32l2,5h18l2-5M136,32v5h13v-5M9,40v5h13v-5M44,40v5h13v-5M70,40v5h15s0-3-1-5M96,40v5h14v-5M115,40l2,5h12l2-5M136,40v5h13v-5M0,48v5h31v-5M35,48v5h47s1-0,2.5-5M88,48v5h22v-5M118,48l2,5h6l2-5M136,48v5h22v-5M0,56v5h31v-5M35,56v5h38s4-1,7-5M88,56v5h22v-5M121,56l2,5l2-5M136,56v5h22v-5" fill="#1f70c1"></path>
+                </svg>
+                <p>I’ve worked from home since the late 90s.  When IBM made me go in a few years back to replace my badge, I joked that the next time I would need it was when it was time for me to turned it in.</p>
+                <p>Well, I was close.  I used it for the first time yesterday to go to a seminar describing what options are available to those like me who are part of an IBM Resource Action ("RA").  Which is IBM’s way of saying that my job no longer exists, and I have until June 29th to find another job within IBM or I will be offered a modest severance package, and can pick from an array of options varying from helping me find a new job, connecting me with a non-profit organization, and retraining.</p>
+                <p>TL;DR: I’m fine, nothing has changed.  I’m already working with a non-profit, namely the
+                    <a href="https://www.apache.org/">Apache Software Foundation</a>, and find my work there to be very rewarding.
+                </p>
+                <p>And, by the way, the key advice from the seminar is to network. That happens to be something that I’m fairly good at.</p>
+                <p>In fact, now that I’ve told my family, my book editor, many people within IBM, and several hundred of my closest friends at the ASF — many of which want to spread the word and help me out — the inescapable conclusion is that I can’t tell all of these people without the word getting out.  So I might as well do it myself, in order to ensure that everybody gets the correct message.</p>
+                <p>For starters, the most likely outcome is that I’m going to simply retire.  My wife and I have planned for this for several years. This may be the nudge that was needed to make it happen.  And like many retirees, I will donate my time to work for a non-profit. I’m just ahead of the curve as I am already doing that.</p>
+                <p>The second most likely outcome is that I will find an equivalent job within IBM.  By equivalent, I mean an opportunity that lets me work full time on open source and open standards in general; and in particular lets me devote the time I feel necessary to the role of ASF President.  I would need to feel comfortable about that before accepting, as retiring later would mean that I would have lost the opportunity for the severance package.  The good news for those who are predisposed to root for this option is that that job has already been identified, and the management team there is working through what it takes to make it happen.  There is no guarantee that they will get HR approval, however, which is why this is listed as the second most likely outcome rather than the first.</p>
+                <p>And finally, the third most likely outcome is that I take a job outside of IBM.  I have a number of people saying that they will shop my résumé around.  Based on these requests, I have now produced
+                    <a href="https://intertwingly.net/resume.html">one</a>.  I am
+                    <b>not</b> looking for a headhunter, but if somebody feels that they have a perfect opportunity for me, I am willing to listen.
+                </p>
+                <p>Again, whatever happens, I’m fine and nothing has changed.</p>
+            </div>
+        </content>
+        <updated>2017-04-07T05:07:22-07:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3355</id>
+        <link href="/blog/2016/07/11/Service-Workers-First-Impressions"/>
+        <link rel="replies" href="3355.atom" thr:count="65" thr:updated="2018-08-20T17:06:33-07:00"/>
+        <title>Service Workers - First Impressions</title>
+        <summary type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">Cache
+                <code>put</code> and
+                <code>match</code> worked right
+the first time; cache
+                <code>keys</code> not so much.  Authentication is a mystery.  Outline of future plans, and a call for help.
+            </div>
+        </summary>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+                    <metadata>
+Created by potrace 1.13, written by Peter Selinger 2001-2015
+</metadata>
+                    <g transform="translate(-5,100) scale(0.035,-0.035)" fill="#000" stroke="none">
+                        <path d="M1041 2503 c-32 -92 -63 -139 -111 -163 -61 -31 -120 -26 -213 17
+l-78 37 -79 -79 c-44 -44 -80 -85 -80 -91 0 -7 16 -45 35 -85 40 -84 44 -133
+16 -195 -25 -54 -57 -77 -152 -111 l-79 -28 0 -120 0 -120 79 -28 c95 -34 127
+-57 152 -111 28 -62 24 -111 -16 -195 -19 -40 -35 -78 -35 -85 0 -6 36 -47 80
+-91 l79 -79 78 37 c93 43 152 48 213 17 48 -24 79 -71 111 -163 l23 -68 119 3
+119 3 28 78 c59 166 152 205 313 130 l78 -37 85 86 86 85 -35 69 c-44 87 -51
+122 -37 174 18 68 68 114 160 146 l80 27 0 122 0 122 -80 27 c-92 32 -142 78
+-160 146 -14 52 -7 87 37 174 l35 69 -86 85 -85 86 -78 -37 c-161 -75 -254
+-36 -313 130 l-28 78 -119 3 -119 3 -23 -68z m286 -533 c63 -31 112 -80 149
+-150 27 -50 27 -220 0 -270 -38 -71 -86 -119 -153 -152 -132 -65 -274 -38
+-375 70 -113 121 -116 309 -5 429 106 115 245 141 384 73z"></path>
+                        <path d="M2306 1346 c-13 -30 -33 -59 -44 -65 -31 -17 -78 -13 -121 8 l-38 20
+-43 -44 -43 -44 16 -43 c35 -91 12 -144 -72 -169 l-42 -12 3 -65 3 -65 40 -14
+c60 -20 88 -57 82 -107 -2 -23 -10 -56 -18 -73 -13 -32 -12 -34 26 -73 21 -22
+44 -40 51 -40 6 0 31 9 55 19 74 32 124 8 152 -74 l14 -40 61 -3 62 -3 25 56
+c19 44 32 59 59 70 32 14 40 13 92 -6 l56 -21 43 42 44 43 -20 38 c-40 79 -18
+138 62 169 l44 18 3 64 3 65 -42 12 c-85 26 -111 89 -70 170 l20 38 -47 46
+-47 46 -35 -19 c-79 -43 -145 -16 -171 69 l-12 41 -64 0 -63 0 -24 -54z m161
+-262 c86 -41 119 -153 69 -238 -60 -103 -193 -114 -273 -23 -120 137 38 339
+204 261z"></path>
+                        <path d="M1586 820 c-7 -40 -31 -48 -60 -21 -27 25 -34 26 -64 3 -19 -15 -21
+-22 -13 -43 14 -38 0 -53 -43 -46 -33 5 -38 3 -52 -25 -15 -28 -14 -31 6 -54
+28 -29 20 -52 -20 -61 -28 -5 -31 -9 -28 -41 3 -31 7 -37 36 -44 38 -10 42
+-32 11 -64 -19 -21 -20 -24 -5 -52 15 -28 18 -30 48 -21 42 12 62 -9 47 -49
+-10 -26 -8 -29 34 -53 15 -8 24 -6 41 10 31 29 45 26 62 -14 12 -29 19 -35 44
+-35 25 0 32 6 44 35 17 40 31 43 62 14 21 -19 24 -20 52 -5 27 14 30 19 25 54
+-6 46 3 55 46 42 29 -8 32 -6 47 22 15 29 14 31 -7 54 -27 29 -18 55 22 64 19
+5 25 13 27 42 3 32 1 36 -28 41 -41 9 -48 32 -19 63 22 24 22 26 7 52 -15 24
+-22 27 -58 24 l-42 -4 4 42 c3 36 0 43 -24 58 -26 15 -28 15 -52 -7 -31 -29
+-54 -22 -62 19 -6 27 -10 30 -44 30 -34 0 -38 -3 -44 -30z m91 -175 c12 -3 34
+-20 48 -36 30 -36 35 -111 9 -147 -49 -71 -170 -67 -209 8 -36 70 -3 159 68
+179 32 9 41 8 84 -4z"></path>
+                    </g>
+                </svg>
+                <p>  Successes, progress, and stumbling blocks encountered while exploring  Service Workers.
+</p>
+                <h3 id="preface">Preface</h3>
+                <p>  The
+                    <a href="https://github.com/apache/whimsy/tree/master/www/board/agenda#readme">Apache  Whimsy Board Agenda tool</a> is designed to make ASF Board meetings run  more smoothly.  It does this by downloading all of the provided reports and  collating them with comments, prior comments, action items, minutes, links to  prior reports, links to committee information, and the like.  It provides a UI  to allow Directors and guests to enter comments.  It provides a UI to allow  the Secretary to take minutes.
+
+                </p>
+                <p>  The tool itself is built using
+                    <a href="https://facebook.github.io/react/">React.JS</a>.  It starts by  downloading all of the reports.  Navigation between reports can be done via  mouse clicks or cursor keys and doesn't involve any server interaction.  As  new data is received, the window is updated.
+
+                </p>
+                <p>  Finally, I'm new to Service Workers so I may be doing things in a profoundly  dumb way.  Any pointers would be appreciated.  I am capable of RTFM and  following examples.
+</p>
+                <h3 id="caching-json">First step - caching JSON</h3>
+                <p>  Some of the data (e.g., the list of ASF JIRA projects) is fetched on demand.  Generally the page is first rendered using an empty list, and then updated  once the actual list is received.
+</p>
+                <p>  This process could be improved by caching the results received and using that  data until fresh data arrives.  As the Cache API is built on promises, and  therefore asynchronous, this generally means rendering three times: once with  a empty list, then with the cache, and finally with live data.
+</p>
+                <pre>
+                    <span style="background-color:hsla(300,100%,50%,0.06)">
+                        <span style="color:#404">/</span>
+                        <span style="color:#404">/</span>
+                    </span> retrieve an cached object.  Note: block may be dispatched twice,
+
+                    <span style="background-color:hsla(300,100%,50%,0.06)">
+                        <span style="color:#404">/</span>
+                        <span style="color:#404">/</span>
+                    </span> once with slightly stale data
+                    <span style="color:#080;font-weight:bold">and</span> once with current data
+
+                    <span style="background-color:hsla(300,100%,50%,0.06)">
+                        <span style="color:#404">/</span>
+                        <span style="color:#404">/</span>
+                    </span>
+                    <span style="background-color:hsla(300,100%,50%,0.06)">
+                        <span style="color:#404">/</span>
+                        <span style="color:#404">/</span>
+                    </span>
+                    <span style="color:#606">Note</span>: caches only work currently on
+                    <span style="color:#036;font-weight:bold">Firefox</span>
+                    <span style="color:#080;font-weight:bold">and</span>
+                    <span style="color:#036;font-weight:bold">Chrome</span>.  All
+
+                    <span style="background-color:hsla(300,100%,50%,0.06)">
+                        <span style="color:#404">/</span>
+                        <span style="color:#404">/</span>
+                    </span> other browsers fall back to
+                    <span style="color:#036;font-weight:bold">XMLHttpRequest</span> (
+                    <span style="color:#036;font-weight:bold">AJAX</span>).
+JSONStorage.fetch = function(name, block) {
+                    <span style="color:#080;font-weight:bold">if</span> (typeof fetch !==
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">'</span>
+                        <span style="color:#D20">undefined</span>
+                        <span style="color:#710">'</span>
+                    </span> &amp;&amp; typeof caches !==
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">'</span>
+                        <span style="color:#D20">undefined</span>
+                        <span style="color:#710">'</span>
+                    </span> &amp;&amp;     (location.protocol ==
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">https:</span>
+                        <span style="color:#710">"</span>
+                    </span> || location.hostname ==
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">localhost</span>
+                        <span style="color:#710">"</span>
+                    </span>)) {    caches.open(
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">board/agenda</span>
+                        <span style="color:#710">"</span>
+                    </span>).then(function(cache) {      var fetched = null;      clock_counter++;
+                    <span style="background-color:hsla(300,100%,50%,0.06)">
+                        <span style="color:#404">/</span>
+                        <span style="color:#404">/</span>
+                    </span> construct arguments to fetch      var args = {
+                    <span style="color:#606">method</span>:
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">get</span>
+                        <span style="color:#710">"</span>
+                    </span>,
+                    <span style="color:#606">credentials</span>:
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">include</span>
+                        <span style="color:#710">"</span>
+                    </span>,
+                    <span style="color:#606">headers</span>: {
+                    <span style="color:#606">Accept</span>:
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">application/json</span>
+                        <span style="color:#710">"</span>
+                    </span>}      };
+                    <span style="background-color:hsla(300,100%,50%,0.06)">
+                        <span style="color:#404">/</span>
+                        <span style="color:#404">/</span>
+                    </span> dispatch request      fetch(
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">../json/</span>
+                        <span style="color:#710">"</span>
+                    </span> + name, args).then(function(response) {        cache.put(name, response.clone());        response.json().then(function(json) {
+                    <span style="color:#080;font-weight:bold">if</span> (!fetched ||
+                    <span style="color:#036;font-weight:bold">JSON</span>.stringify(fetched) !=
+                    <span style="color:#036;font-weight:bold">JSON</span>.stringify(json)) {
+                    <span style="color:#080;font-weight:bold">if</span> (!fetched) clock_counter--;            fetched = json;
+                    <span style="color:#080;font-weight:bold">if</span> (json) block(json);
+                    <span style="color:#036;font-weight:bold">Main</span>.refresh()          }        })      });
+                    <span style="background-color:hsla(300,100%,50%,0.06)">
+                        <span style="color:#404">/</span>
+                        <span style="color:#404">/</span>
+                    </span> check cache      cache.match(name).then(function(response) {
+                    <span style="color:#080;font-weight:bold">if</span> (response &amp;&amp; !fetched) {          response.json().then(function(json) {            clock_counter--;            fetched = json;
+                    <span style="color:#080;font-weight:bold">if</span> (json) block(json);
+                    <span style="color:#036;font-weight:bold">Main</span>.refresh()          })        }      })    })  }
+                    <span style="color:#080;font-weight:bold">else</span>
+                    <span style="color:#080;font-weight:bold">if</span> (typeof
+                    <span style="color:#036;font-weight:bold">XMLHttpRequest</span> !==
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">'</span>
+                        <span style="color:#D20">undefined</span>
+                        <span style="color:#710">'</span>
+                    </span>) {
+                    <span style="background-color:hsla(300,100%,50%,0.06)">
+                        <span style="color:#404">/</span>
+                        <span style="color:#404">/</span>
+                    </span> retrieve from the network only    retrieve(name,
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">json</span>
+                        <span style="color:#710">"</span>
+                    </span>, function(item) {
+                    <span style="color:#080;font-weight:bold">return</span> item.block})  }
+}
+                </pre>
+                <p>  All in all remarkably painless and completely transparent to the calling  application.  Doesn't involve the activation of Service Workers, but it  doesn't have to.
+</p>
+                <h3 id="caching-html">Second step - caching HTML</h3>
+                <p>  What's true for JSON should also be true for HTML.  Prior to the caching  logic introduced above, and continuing to be true for browsers that don't  support the service workers caching interface, data that should appear on the  page would be missing briefly and show up a second or two later.  In the case  of HTML, that data would be the entire page.  This would typically be seen  both on the initial page load as well as any time a link is opened in a new  tab.
+</p>
+                <p>  The HTML case is both simpler and more difficult.  Fetching the HTML from  cache and then replacing it wholesale from the network, while possible, would  be jarring.  Fortunately, there already is logic in place to update the  content of the pages based on updates received by XHR.  So initially  displaying where the user last left off, as well as updating the cache,  is sufficient.
+</p>
+                <p>  Unfortunately, it isn't quite so simple.  I've included the current code below  complete with log statements and dead ends.
+</p>
+                <pre>
+                    <span style="background-color:hsla(300,100%,50%,0.06)">
+                        <span style="color:#404">/</span>
+                        <span style="color:#404">/</span>
+                    </span> simple hashcode to prevent authorization from leaking
+var hashcode = function(s) {
+                    <span style="color:#080;font-weight:bold">return</span> s &amp;&amp; s.split(
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#710">"</span>
+                    </span>).reduce(    function(a, b) {
+                    <span style="color:#080;font-weight:bold">return</span> ((a &lt;&lt;
+                    <span style="color:#00D">5</span>) - a) + b.charCodeAt(
+                    <span style="color:#00D">0</span>)    },
+                    <span style="color:#00D">0</span>  )
+};
+
+var status = {
+                    <span style="color:#606">auth</span>: null};
+
+this.addEventListener(
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">fetch</span>
+                        <span style="color:#710">"</span>
+                    </span>, function(event) {  var scope = this.registration.scope;  var url = event.request.url;  var path = url.slice(scope.length);  var auth = hashcode(event.request.headers.get(
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">Authorization</span>
+                        <span style="color:#710">"</span>
+                    </span>));
+                    <span style="color:#080;font-weight:bold">if</span> (
+                    <span style="background-color:hsla(300,100%,50%,0.06)">
+                        <span style="color:#404">/</span>
+                        <span style="color:#808">^</span>
+                        <span style="color:#D20">\d</span>
+                        <span style="color:#D20">\d</span>
+                        <span style="color:#D20">\d</span>
+                        <span style="color:#D20">\d</span>
+                        <span style="color:#808">-</span>
+                        <span style="color:#D20">\d</span>
+                        <span style="color:#D20">\d</span>
+                        <span style="color:#808">-</span>
+                        <span style="color:#D20">\d</span>
+                        <span style="color:#D20">\d</span>
+                        <span style="color:#404">/</span>
+                    </span>/.test(path) &amp;&amp; event.request.method ==
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">GET</span>
+                        <span style="color:#710">"</span>
+                    </span>) {    console.log(
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">Handling fetch event for</span>
+                        <span style="color:#710">"</span>
+                    </span>, event.request.url);    event.respondWith(caches.open(
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">board/agenda</span>
+                        <span style="color:#710">"</span>
+                    </span>).then(function(cache) {
+                    <span style="color:#080;font-weight:bold">return</span> cache.match(path).then(function(cached) {
+                    <span style="color:#080;font-weight:bold">if</span> (cached) console.log(
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">matched</span>
+                        <span style="color:#710">"</span>
+                    </span>);        console.log(
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">auth</span>
+                        <span style="color:#710">"</span>
+                    </span>, auth, status.auth);
+                    <span style="color:#080;font-weight:bold">if</span> (!auth || auth != status.auth) {
+                    <span style="background-color:hsla(300,100%,50%,0.06)">
+                        <span style="color:#404">/</span>
+                        <span style="color:#404">/</span>
+                    </span> the following doesn't work          cached = new Response(
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">Unauthorized</span>
+                        <span style="color:#710">"</span>
+                    </span>, {
+                    <span style="color:#606">status</span>:
+                    <span style="color:#00D">401</span>,
+                    <span style="color:#606">statusText</span>:
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">Unauthorized</span>
+                        <span style="color:#710">"</span>
+                    </span>,
+                    <span style="color:#606">headers</span>: {
+                    <span style="color:#606">
+                        <span style="color:#404">"</span>
+                        <span>WWW-Authenticate</span>
+                        <span style="color:#404">"</span>
+                    </span>:
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">Basic realm=</span>
+                        <span style="color:#710">"</span>
+                    </span>
+                    <span style="color:#036;font-weight:bold">ASF</span>
+                    <span style="color:#036;font-weight:bold">Members</span>
+                    <span style="color:#080;font-weight:bold">and</span>
+                    <span style="color:#036;font-weight:bold">Officers</span>
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#710">"</span>
+                    </span>}          });
+                    <span style="background-color:hsla(300,100%,50%,0.06)">
+                        <span style="color:#404">/</span>
+                        <span style="color:#404">/</span>
+                    </span>
+                    <span style="color:#606">fallback</span>: ignore cache
+                    <span style="color:#080;font-weight:bold">unless</span> authorized          cached = null        };
+                    <span style="color:#080;font-weight:bold">if</span> (cached) console.log(
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">serving from cache</span>
+                        <span style="color:#710">"</span>
+                    </span>);        var network = fetch(event.request).then(function(response) {
+                    <span style="color:#080;font-weight:bold">if</span> (!cached) console.log(
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">fetching from network</span>
+                        <span style="color:#710">"</span>
+                    </span>);
+                    <span style="color:#080;font-weight:bold">if</span> (cached) console.log(
+                    <span style="background-color:hsla(0,100%,50%,0.05)">
+                        <span style="color:#710">"</span>
+                        <span style="color:#D20">updating cache</span>
+                        <span style="color:#710">"</span>
+                    </span>);          console.log(response);
+                    <span style="color:#080;font-weight:bold">if</span> (response.ok) cache.put(path, response.clone());          status.auth = auth;
+                    <span style="color:#080;font-weight:bold">return</span> response        });
+                    <span style="color:#080;font-weight:bold">return</span> cached || network      })    }))  }
+                    <span style="color:#080;font-weight:bold">else</span>
+                    <span style="color:#080;font-weight:bold">if</span> (auth) {
+                    <span style="background-color:hsla(300,100%,50%,0.06)">
+                        <span style="color:#404">/</span>
+                        <span style="color:#404">/</span>
+                    </span> capture authorization from other pages,
+                    <span style="color:#080;font-weight:bold">if</span> provided    status.auth = auth  }
+})
+                </pre>
+                <p>  The primary problem is that the board agenda tool requires authentication to  use as the data presented may contain Apache Software Foundation confidential  information.
+</p>
+                <p>  Without accounting for this, what often would be placed into the cache would  be the HTTP
+                    <code>401</code> challenge response.  That's not desirable.
+
+                </p>
+                <p>  Attempting to force the return of a challenge when an Authorization header is not present results in the display of the challenge response.  Again, not what we want.
+</p>
+                <p>  Falling back to only providing the cached data when the Authorization header  is present (and matches the one used for the cache) results in the cache being  used sometimes with Firefox.  And, unfortunately, never with Chrome.
+</p>
+                <p>  A secondary problem, of lesser importance, is that the cache never gets  updated if the service worker responds with a cache copy.  Of if it does,  the
+                    <code>console.log</code> messages aren't getting executed or aren't  producing output.
+
+                </p>
+                <h3 id="monitoring">Third step - monitoring</h3>
+                <p>  To help with debugging, it occurred to me that it would make sense to produce  a page that shows Service Worker and Cache status.
+</p>
+                <ul>
+                    <li>
+                        <p>      For service workers, there was no problems, but the results were      underwhelming.  I only got information back about my service worker even      though I had several activated by this point by virtue of running      various demos.  That's not a problem, as that's all I needed.  The only      information I could get was the state of the service worker.  But even      so, I could use this as a building block to enable users to send a      message to the service worker and/or unregister it.  See plans below for      more details.    </p>
+                    </li>
+                    <li>
+                        <p>      For caches, I simply couldn't get it to work.  For example, I tried      adding the following line immediate after the
+                            <code>cache.put</code>      line in the first code snippet:
+                        </p>
+                        <pre>console.log cache.keys()</pre>
+                        <p>      The result was an empty list (
+                            <code>[]</code>) on both Firefox and      Chrome.  This is problematic on a number of levels, not the least of      which being that the interface is defined to return a promise and Arrays      in JavaScript don't respond to then.
+                        </p>
+                        <p>References:</p>
+                        <ul>
+                            <li>
+                                <a href="https://slightlyoff.github.io/ServiceWorker/spec/service_worker/#cache-keys">Service Workers Nightly</a>
+                            </li>
+                            <li>
+                                <a href="https://developer.mozilla.org/en-US/docs/Web/API/Cache/keys">Cache.keys() - Web APIs | MDN</a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+                <h3 id="plans">Plans</h3>
+                <p>  One thing I haven't explored yet is replacing the fetch call with one with  different values for the request mode and credentials mode.  I figured I would  ask for guidance before proceeding down that path.
+</p>
+                <p>  Once caching HTML is mastered, caching related artifacts like stylesheets and  javascripts would be in order.  An online fallfack approach would likely be  the best match.
+</p>
+                <p>  After that, the next order of business would be queuing of updates while  offline.  While in general, that would be a hard problem, in this case as user  operations are limited by role and generaally to editing their own changes,  it should be manageable.
+</p>
+            </div>
+        </content>
+        <updated>2016-07-11T11:27:29-07:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3354</id>
+        <link href="/blog/2015/09/24/FacePalm"/>
+        <link rel="replies" href="3354.atom" thr:count="91" thr:updated="2018-08-20T14:39:47-07:00"/>
+        <title>FacePalm</title>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+                    <rect fill="#D22" x="0" y="3" height="95" width="95" rx="15"></rect>
+                    <circle cx="18" cy="81" r="9" fill="#FFF"></circle>
+                    <path d="M48,84s0-33-33-33 M75,84s0-60-60-60" stroke-linecap="round" stroke-width="15" stroke="#FFF" fill="none"></path>
+                </svg>
+                <p>
+                    <a href="https://developers.facebook.com/docs/instant-articles/automated-publishing">Automated Publishing with Instant Articles</a>
+                </p>
+                <p>
+                    <code>&lt;description&gt;</code> A summary of your article, in
+                    <b>plain text</b> form.
+                </p>
+                <p>
+                    <code>&lt;pubDate&gt;</code> The date of the article’s publication, in
+                    <a href="http://en.wikipedia.org/wiki/ISO_8601">ISO-8601 format.</a>
+                </p>
+                <p>Related:
+                    <a href="http://www.intertwingly.net/blog/2006/03/28/plaintext">plaintext</a>,
+                    <a href="http://intertwingly.net/blog/2006/05/01/May-Day">May Day</a>,
+                    <a href="http://intertwingly.net/blog/2006/06/01/June-Bug">June Bug</a>,
+                    <a href="http://intertwingly.net/blog/2006/07/14/Another-Month">Another Month</a>, and numerous others.
+                </p>
+            </div>
+        </content>
+        <updated>2015-09-24T08:44:23-07:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3353</id>
+        <link href="/blog/2015/05/18/Brief-history-of-the-ASF-Board-Agenda-tool"/>
+        <link rel="replies" href="3353.atom" thr:count="86" thr:updated="2018-08-20T20:34:30-07:00"/>
+        <title>Brief history of the ASF Board Agenda tool</title>
+        <summary type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <p>the current implementation is a lot more fun to develop and easier to maintain than prior versions.  As an example, if it were decided that the moment the secretary clicked the ‘timestamp` button on the 'Call to order’ page, all comment buttons are to be removed from all windows and all comment modal dialogs are to be closed, this could be implemented using a single if statement as the event is already propagated, and a re-render is already triggered.  All that would be required is to change the conditions under which the comment button appears.</p>
+                <p>The
+                    <a href="https://github.com/rubys/whimsy-agenda#readme">board agenda tool</a> has been tested on Linux, Mac OS/X, Vagrant, and Docker.  It contains a suite of tests.
+                </p>
+            </div>
+        </summary>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns='http://www.w3.org/2000/svg' width="100" height="100" viewBox="0 0 100 100">
+                    <path d="M34,38a16,16,0,1,0,0,24l32-24a16,16,0,1,1,0,24M40,43l20,15" stroke="#44B74A" stroke-width="4" fill="none"></path>
+                </svg>
+                <p>The gold standard of server side web applications is Model, View, Controller.  Early versions of this tool was not written that way: it was a CGI script that grew like a weed.  Over time, some
+                    <a href="https://jquery.com/">JQuery</a> effects were added.
+                </p>
+                <p>The first major rewrite was done using
+                    <a href="https://angularjs.org/">Angular.js</a> and
+                    <a href="http://getbootstrap.com/">Bootstrap</a>.  These frameworks enabled me to do things I had never done before.  It also required me to write code that watched for changes, and to ensure that changes were applied in place (specifically arrays and hashes could not be replaced, they had to be updated).
+                </p>
+                <p>While Angular.js used terms like Directives, Filters, and Services, the overall effect was to impose a structure on the client side application.  As with most things, this structure was both constraining and freeing.</p>
+                <p>The current rewrite replaces Angular.js with
+                    <a href="https://facebook.github.io/react/">React.js</a>.  Gone is all watches and the need to update things in place.  In its place is a policy of “rerender everything” whenever an event (a keystroke, a mouse click, a server side event) occurs.  With React.JS, rerendering everything is efficient as React computes a delta and then only applies the delta to the DOM.  React.JS does provide a suggested architecture, namely Flux, that minimizes the need to rerender everything, but in practice I have not found that necessary.
+                </p>
+                <p>To illustrate, if you bring up the “Call to order” page and press and hold down the right arrow key, every page of the agenda will be flashed up and promptly replaced.</p>
+                <p>The overall resulting flow is as follows: when a page is fetched the response starts out with a pre-rendered representation (simple HTML), followed by the scripts needed to produce that page, followed by the data used by those scripts.  This ensures that the data is presented promptly, then become reactive to input and events.</p>
+                <p>The resulting architecture isn’t MVC on either the client or the server.  Instead, V and C get mushed together, and a unified client/server event stream is added.</p>
+                <p>Events are received from the server using
+                    <a href="http://www.w3.org/TR/eventsource/">Server Sent Events</a>.  This is
+                    <a href="http://caniuse.com/#feat=eventsource">widely implemented</a>, and has a solid
+                    <a href="https://github.com/Yaffle/EventSource/">polyfill</a> for browsers (most notably, IE) that haven’t implemented this standard.  Its one way data flow is a good fit for React.js.
+                </p>
+                <p>Events are generally triggered by actions on a client browser window somewhere (typically a mouse click) resulting in a HTTP GET or POST request being sent to the server, but can also be triggered by file system changes on the server (example: a cron job does a svn update, which causes the agenda to contain new data).</p>
+                <p>A single event-stream is maintained per browser, and that process is responsible for propagating updates to all tabs and windows.  Events can be sent to all clients, or only clients authenticated with a given user id.  This enables my pending updates to be immediately reflected on all of my tabs and windows but not affect others.  The result of an event is to update one or more models, and then trigger a re-render.</p>
+                <p>Models on both the client and server are simple classes.  Class methods operate on the entity as a whole (example: write the whole agenda to disk on the server, or provide an index for the agenda on the client).  Instance methods refer to an individual item (example: an agenda item).</p>
+                <p>What’s left is React Components on the client and actions on the server.</p>
+                <p>React components have a render method.  That method has full (read-only) access to client models, and can do if statements, iterate over result, and (generally minor) computations.  More extensive computations should be refactored to other methods in the component when limited in scope to a single component, or to the client model otherwise.  The one limitation that is enforced is that render methods can not directly or indirectly change state.  A predefined
+                    <a href="https://facebook.github.io/react/docs/component-specs.html">life-cycle</a> is defined.  Other methods can be added, for example methods to handle onClick events.
+                </p>
+                <p>These methods can trigger HTTP POST and GET requests (the convenience method I provide for the latter is called fetch instead).  These run small scripts on the server that may update models, generate events, and return JSON.</p>
+                <p>Taken together, the current implementation is a lot more fun to develop and easier to maintain than prior versions.  As an example, if it were decided that the moment the secretary clicked the ‘timestamp` button on the 'Call to order’ page, all comment buttons are to be removed from all windows and all comment modal dialogs are to be closed, this could be implemented using a single if statement as the event is already propagated, and a re-render is already triggered.  All that would be required is to change the conditions under which the comment button appears.</p>
+                <p>The
+                    <a href="https://github.com/rubys/whimsy-agenda#readme">board agenda tool</a> has been tested on Linux, Mac OS/X, Vagrant, and Docker.  It contains a suite of tests.
+                </p>
+            </div>
+        </content>
+        <updated>2015-05-18T09:15:15-07:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3352</id>
+        <link href="/blog/2015/04/02/Spartan-Test-Results"/>
+        <link rel="replies" href="3352.atom" thr:count="129" thr:updated="2018-08-20T03:27:04-07:00"/>
+        <title>Spartan Test Results</title>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+                    <g stroke-width="5" stroke="#030092" fill="none">
+                        <circle cx="50" cy="50" r="46"></circle>
+                        <path d="M8,35h84M8,65h84"></path>
+                        <ellipse cx="50" cy="50" rx="20" ry="43"></ellipse>
+                    </g>
+                </svg>
+                <p>I replaced IE results with Spartan results in my
+                    <a href="https://url.spec.whatwg.org/interop/test-results/">urltests</a>.  Other than the user agent string, nothing changed.
+                </p>
+                <p>Following are selected examples where three out of four of the top browsers agree, identified by the odd browser out:</p>
+                <ul>
+                    <li>
+                        <a href="https://url.spec.whatwg.org/interop/test-results/53d49202f1?select=current&amp;baseline=chrome">Chrome</a>
+                    </li>
+                    <li>
+                        <a href="https://url.spec.whatwg.org/interop/test-results/15341d9fab?select=current&amp;baseline=firefox">Firefox</a>
+                    </li>
+                    <li>
+                        <a href="https://url.spec.whatwg.org/interop/test-results/d7d52bebd0?select=current&amp;baseline=safari">Safari</a>
+                    </li>
+                    <li>
+                        <a href="https://url.spec.whatwg.org/interop/test-results/8bb3c95bce?select=current&amp;baseline=spartan">Spartan</a>
+                    </li>
+                </ul>
+            </div>
+        </content>
+        <updated>2015-04-02T16:54:22-07:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3351</id>
+        <link href="/blog/2015/04/01/Ruby2JS-2-0"/>
+        <link rel="replies" href="3351.atom" thr:count="84" thr:updated="2018-08-20T01:37:10-07:00"/>
+        <title>Ruby2JS 2.0</title>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns='http://www.w3.org/2000/svg' width="100" height="100" viewBox="0 0 100 100">
+                    <path d='M20,100l74-5l6-75zM61,35l37-2l-29-24z' fill='#b11'></path>
+                    <path d='M21,100l74-5l-47-4zM98,33c4-12,5-29-14-33l-15,9l29,24z' fill='#811'></path>
+                    <path d='M7,67l14,33l11-38z' fill='#d44'></path>
+                    <path d='M29,61l42,13l-10-42zM56,0h28l-16,10zM1,51l-1,29l7-13z' fill='#c22'></path>
+                    <path d='M32,61l39,13c-14,13-30,24-50,26z' fill='#a00'></path>
+                    <path d='M61,35l10,39l17-23zM32,61l16,30c9-5,16-11,23-17l-39-13z' fill='#900'></path>
+                    <path d='M61,35l27,17l10-20l-37,3z' fill='#800'></path>
+                    <path d='M71,74l23,21l-6-44zM0,80c1,19,15,20,21,20l-14-33l-7,13zM7,67l-2,26c4,6,9,7,15,6c-4-11-13-32-13-32zM69,9l30,4c-1-7-6-11-15-13l-15,9z' fill='#911'></path>
+                    <path d='M1,51l6,16l25-5l29-27l8-26l-13-9l-22,8c-6,7-20,19-20,19c-1,1-9,16-13,24z' fill='#f84'></path>
+                    <path d='M21,21c15-14,34-23,42-16c7,8-1,26-16,40c-14,15-33,24-41,17c-7-7,1-26,15-41z' fill='#F0DB4F'></path>
+                    <g transform="rotate(307,33,12),scale(0.45)">
+                        <path d='M26,84l8-5c1,3,3,5,6,5c3,0,5-1,5-6v-32h9v32c0,10-5,14-14,14c-7,0-11-4-14-8' id='j'></path>
+                        <path d='M60,83l7-5c2,3,5,6,9,6c4,0,7-2,7-5c0-3-3-4-7-6l-2-1c-7-3-12-7-12-14c0-7,6-13,14-13c6,0,10,2,13,8l-7,5c-1-3-3-4-6-4c-3,0-4,1-4,4c0,2,1,4,5,5l3,1c8,4,12,7,12,15c0,9-6,13-15,13c-9,0-15-4-17-9' id='s'></path>
+                    </g>
+                </svg>
+                <p>I’ve released
+                    <a href="https://github.com/rubys/ruby2js#readme">Ruby2JS</a> version 2.0.  Key new features:
+                </p>
+                <ul>
+                    <li>Line comment support.  More specifically, comments associated with statements are copied to the output.  Comments within statements are still omitted.</li>
+                    <li>
+                        <a href="https://docs.google.com/document/d/1U1RGAehQwRypUTovF1KRlpiOFze0b-_2gc6fAH0KY0k/edit">Source Map</a> support.  This enables debugging of generated JavaScript using the Ruby source.
+                    </li>
+                </ul>
+                <p>The
+                    <a href="https://github.com/rubys/whimsy-agenda#readme">Whimsy Agenda</a> rewrite-in-progress (previously based on Angular.js, now being rebased on React.js) can be used to explore both of these features.
+                </p>
+            </div>
+        </content>
+        <updated>2015-04-01T07:26:31-07:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3350</id>
+        <link href="/blog/2015/02/11/React-rb-updates"/>
+        <link rel="replies" href="3350.atom" thr:count="125" thr:updated="2018-08-20T03:41:22-07:00"/>
+        <title>React.rb updates</title>
+        <summary type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <p>I’ve made a number of updates to the demos.  The
+                    <a href="http://facebook.github.io/react/docs/tutorial.html">tutorial</a> demo has been updated to do server side rendering.  This means that it is able to be used by clients which either don’t support or have turned off JavaScript.
+                </p>
+                <p>The second demo is a calendar.  Unlike the tutorial which is a single file, this application is organized in a manner more consistent with how I expect projects to be organized.</p>
+            </div>
+        </summary>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+                    <g transform="translate(50,50)">
+                        <circle fill="#00D8FF" r="8"></circle>
+                        <g fill="none" stroke="#00D8FF" stroke-width="4">
+                            <ellipse rx="45" ry="17"></ellipse>
+                            <ellipse rx="45" ry="17" transform="rotate(60)"></ellipse>
+                            <ellipse rx="45" ry="17" transform="rotate(120)"></ellipse>
+                        </g>
+                    </g>
+                </svg>
+                <p>I’ve made a number of updates to the demos.  The
+                    <a href="http://facebook.github.io/react/docs/tutorial.html">tutorial</a> demo has been updated to do server side rendering.  This means that it is able to be used by clients which either don’t support or have turned off JavaScript.  To run:
+                </p>
+                <pre class="code">git clone https://github.com/rubys/ruby2js.git
+cd ruby2js/demo
+bundle update
+ruby react-tutorial.rb</pre>
+                <p>Visit the URL (typically
+                    <a href="http://localhost:4567/">http://localhost:4567/</a>) and enter a comment.  Visit the same URL in a different tab or a different browser and enter another comment.  Switch back to the original browser/tab.  If you have client side JavaScript disabled, you will need to hit refresh.
+                </p>
+                <p>The second demo is a calendar.  To get started:</p>
+                <pre class="code">git clone https://github.com/rubys/wunderbar.git
+cd wunderbar/demo/calendar
+bundle update
+rackup</pre>
+                <p>Visit the URL (typically
+                    <a href="http://localhost:9292/">http://localhost:9292/</a>). This will take you to the current month.  Left and right arrows will take you different months (and update the URL).  Unlike the tutorial which is a single file, this application is organized in a manner more consistent with how I expect projects to be organized.
+                </p>
+            </div>
+        </content>
+        <updated>2015-02-11T15:10:31-08:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3349</id>
+        <link href="/blog/2015/02/03/DSL-for-JavaScript"/>
+        <link rel="replies" href="3349.atom" thr:count="89" thr:updated="2018-08-20T13:48:14-07:00"/>
+        <title>DSL for JavaScript</title>
+        <summary type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <p>
+                    <a href="https://twitter.com/jashkenas/status/562635888753377281">Jeremy Ashkenas</a>:
+                    <em>“work towards building a language that is to ES6 as CoffeeScript is to ES5”… close, but—do it for [ES6+HTML+CSS], and you’ll win ;)</em>
+                </p>
+                <p>It occurs to me that there is a shortcut available.  Let a library like React replace [ES6+HTML+CSS].  Then build a
+                    <a href="http://en.wikipedia.org/wiki/Domain-specific_language">DSL</a> for that library.
+                </p>
+            </div>
+        </summary>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+                    <path d="M4,14h92" stroke="#4682b4" stroke-width="5"></path>
+                    <text x="50" y="90" font-size="90" fill="#5f9ea0" font-family="serif" text-anchor="middle">
+                        <![CDATA[W]]>
+                    </text>
+                </svg>
+                <p>
+                    <a href="https://twitter.com/jashkenas/status/562635888753377281">
+                        <cite>Jeremy Ashkenas</cite>
+                    </a>:
+                    <em>“work towards building a language that is to ES6 as CoffeeScript is to ES5”… close, but—do it for [ES6+HTML+CSS], and you’ll win ;)</em>
+                </p>
+                <p>It occurs to me that there is a shortcut available.  Let a library like React replace [ES6+HTML+CSS].  Then build a
+                    <a href="http://en.wikipedia.org/wiki/Domain-specific_language">DSL</a> for that library.
+                </p>
+                <p>JavaScript isn’t exactly known for its ability to build DSLs.  Ruby, however,
+                    <a href="http://jroller.com/rolsen/entry/building_a_dsl_in_ruby">is</a>.  And has an excellent
+                    <a href="https://github.com/whitequark/parser">parser</a> library.  By
+                    <a href="https://github.com/rubys/ruby2js#filters">transforming</a> the
+                    <a href="http://en.wikipedia.org/wiki/Abstract_syntax_tree">AST</a>, I can convert
+                    <a href="https://svn.apache.org/repos/infra/infrastructure/trunk/projects/whimsy/www/calendar-demo/views/calendar.js.rb">calendar.js.rb</a> into
+                    <a href="http://intertwingly.net/stories/2015/02/02/calendar-demo/calendar.js">calendar.js</a>.
+                </p>
+                <p>In the process, I start by replacing
+                    <a href="http://facebook.github.io/react/docs/jsx-in-depth.html">JSX</a> with a
+                    <a href="https://github.com/rubys/wunderbar/#wunderbar-easy-html5-applications">library</a> which was inspired by
+                    <a href="https://github.com/jimweirich/builder#readme">Builder</a>,
+                    <a href="http://markaby.rubyforge.org/">Markaby</a>, and
+                    <a href="https://github.com/ahoward/tagz">Tagz</a>.  These libraries, in turn were presumably inspired by earlier works like
+                    <a href="http://perldoc.perl.org/CGI.html#CREATING-STANDARD-HTML-ELEMENTS:">Perl’s CGI</a>.
+                </p>
+                <p>But there is more.  JSX can’t directly express iteration.  Look at
+                    <a href="https://github.com/reactjs/react-tutorial/blob/85a92a09a9dbfbde6c74bf6fbc9cfa2919775d61/public/scripts/example.js#L81">CommentList</a> from the
+                    <a href="http://facebook.github.io/react/docs/tutorial.html">React tutorial</a>.  Instead you build up a list, and then subsequently wrap that list.  For nested lists, it appears worthwhile to split out separate components.  There is nothing wrong with doing that, but I will suggest that the primary reason to split out a component shouldn’t be to pander to the limitations of the programming language syntax.
+                </p>
+                <p>In Ruby you
+                    <b>can</b> directly express iteration.  So where a comment box in the tutorial takes four classes, an entire calendar month can be expressed in one.
+                </p>
+                <p>And there is even more.
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Functions">Functions</a> in JavaScript are the swiss army knives of programming language features.  The can be used to express classes, blocks, lambdas, procs.  But this flexiblity comes at a
+                    <a href="http://alistapart.com/article/getoutbindingsituations">price</a>.  Ruby2JS can detect when idioms like
+                    <a href="http://stackoverflow.com/questions/962033/what-underlies-this-javascript-idiom-var-self-this">var self=this</a> are needed and automatically apply them.
+                </p>
+                <p>The net is that I can write smaller, more understandable code.  And in the process focus more on the problem I’m trying to solve.</p>
+                <p>Like with
+                    <a href="http://coffeescript.org/">CoffeeScript</a>,
+                    <em>"It’s just JavaScript"</em>. The code compiles one-to-one into the equivalent JS, and there is no interpretation at runtime.  You can use any existing JavaScript library seamlessly from Ruby2JS (and vice-versa). The compiled output is readable and pretty-printed, will work in every JavaScript runtime, and tends to run as fast or faster than the equivalent handwritten JavaScript.
+                </p>
+                <p>Now I don’t expect to have the success or
+                    <a href="https://twitter.com/raganwald/status/555386257233027073">impact</a> that CoffeeScript has had.  But I can say that I’m having fun.  And in the process, I’m seeing the benefits with applications I write.
+                </p>
+            </div>
+        </content>
+        <updated>2015-02-03T16:50:18-08:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3348</id>
+        <link href="/blog/2015/02/02/Web-Components"/>
+        <link rel="replies" href="3348.atom" thr:count="183" thr:updated="2018-08-20T02:09:14-07:00"/>
+        <title>Web Components</title>
+        <summary type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <p>
+                    <a href="https://twitter.com/brianleroux/status/561594569913950208">Brian Leroux</a>:
+                    <em>ES6 and Web Components</em>
+                </p>
+                <p>My take is that this talk lumps React in with others based on when it was introduced; but that it is fundamentally different from, say Angular.js as Angular.js is from jQuery.</p>
+            </div>
+        </summary>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+                    <g transform="translate(50,50)">
+                        <circle fill="#00D8FF" r="8"></circle>
+                        <g fill="none" stroke="#00D8FF" stroke-width="4">
+                            <ellipse rx="45" ry="17"></ellipse>
+                            <ellipse rx="45" ry="17" transform="rotate(60)"></ellipse>
+                            <ellipse rx="45" ry="17" transform="rotate(120)"></ellipse>
+                        </g>
+                    </g>
+                </svg>
+                <p>
+                    <a href="https://twitter.com/brianleroux/status/561594569913950208">
+                        <cite>Brian Leroux</cite>
+                    </a>:
+                    <em>ES6 and Web Components</em>
+                </p>
+                <p>Good overview.  Issues:</p>
+                <ul>
+                    <li>YUI is an example of a key problem w/ corp stewardship; Angular, Polymer, React all OK though?</li>
+                    <li>HTML Imports in trouble as Mozilla doesn’t want to implement; Custom Elements OK even though Chrome is the only implementation?</li>
+                    <li>Overall, Brian mentions four specifications, and crosses off three.  Why not all four?</li>
+                </ul>
+                <p>My take is that this talk lumps React in with others based on when it was introduced; but that it is fundamentally different from, say Angular.js as Angular.js is from jQuery.  Compared to the alternatives, react is more imperative, and is based on a virtual DOM.  It also can run in both the server and the client.</p>
+                <p>Brian suggests that you view source on
+                    <a href="http://brian.io/date-today/">http://brian.io/date-today/</a>.  What you don’t see when you do that is today’s date.  I’d suggest that the ideal would be a page where you do see today’s date — even if JavaScript is disabled.  And for you to be able to interact with that page in ways that involve the server.
+                </p>
+                <p>I have my own page on which I would suggest that you view source:
+                    <del>
+                        <a href="https://whimsy.apache.org/calendar-demo">calendar-demo</a>
+                    </del> (
+                    <strong>Update:</strong> that site is down, try
+                    <a href="http://intertwingly.net/stories/2015/02/02/calendar-demo/2015/02">this static snapshot</a>).  Use the left and right arrow buttons to go to the previous and next months.  Viewing source reveals that the page is delivered pre-rendered, and only after the content is delivered are script libraries loaded.  Traversing to the next and previous months are pretty snappy despite the fact that there has been no optimization: in particular, there are no anticipatory prefetches.  Nor is data retained should you go back to a previous month.  Neither of these changes would be hard to implement.
+                </p>
+                <p>Source is available in
+                    <a href="https://svn.apache.org/repos/infra/infrastructure/trunk/projects/whimsy/www/calendar-demo">svn</a>.  Check it out, do a bundle update to get the dependencies, run rake if you want to run a few tests, and run rackup to start a local server.
+                </p>
+                <p>I must say that being able to define a component with all of the rendering, client, and server logic in one place is very appealing to me.</p>
+                <p>Brian suggests authoring source in ES6, and targeting ES5.  My preference would be to work towards building a language that is to ES6 as CoffeeScript is to ES5.  At the moment, my experimentation along those lines is happening in
+                    <a href="https://rubygems.org/gems/ruby2js">Ruby2JS</a>.
+                </p>
+                <p>
+                    <a href="https://www.youtube.com/watch?v=7rDsRXj9-cU">React Native</a> looks worth watching.  Perhaps as my calendar is using flexbox, I will be able to quickly build an Android or IOS equivalent.
+                </p>
+            </div>
+        </content>
+        <updated>2015-02-02T14:28:32-08:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3347</id>
+        <link href="/blog/2015/01/28/Email-addresses"/>
+        <link rel="replies" href="3347.atom" thr:count="76" thr:updated="2018-08-20T17:05:03-07:00"/>
+        <title>Email addresses</title>
+        <summary>I have been telling all non-IBMers to not use my ibm.com email address for years, but this advice is routinely ignored.  I’ve repeated the reaons behind why I ask this enough times that it makes sense for me to post the reasons in one place so that I can point to it.</summary>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns='http://www.w3.org/2000/svg' width="167" height="60" viewBox="0 0 167 60">
+                    <rect x='32' y='15' fill='#f3b457' rx='3' height='37' width='113'></rect>
+                    <g stroke='#FFF' stroke-width='2'>
+                        <path d='M38,9c-3,17-11,31-12,33c11,4,21,9,31,15c3-8,5-16,7-24-8-11-17-17-26-24' fill='#64a15a'></path>
+                        <path d='M38,9c5,12,8,20,11,30l15-6' fill='#64a15a'></path>
+                        <path d='M53,14c10,12,20,24,24,38c10-8,20-16,29-22-1-15-8-23-17-29z' fill='#57a295'></path>
+                        <path d='M53,14c13,0,26,2,38,6c0-6,1-13-2-20' fill='#57a295'></path>
+                        <path d='M91,33c11-7,22-13,38-15c17,6,16,11,21,17-14,3-25,14-35,23-7-16-16-18-24-25z' fill='#d37736'></path>
+                        <path d='M91,33c14-2,26-1,39,0v-14' fill='#d37736'></path>
+                    </g>
+                    <path d='M4,24l5,4-5,4h7v-8z' fill='#FFF200'></path>
+                    <path d='M25,27l-5-3h-16l9,4-9,4h16l5-3z' fill='#d4477e'></path>
+                    <path d='M27,28l-4-2h-14l4,2-4,2h14l5-3z' fill='#e55d9c'></path>
+                    <path d='M61,27h38l-4,2h-32zM31,27h-28l-3,1l4,1h27zM122,27h33v2h-31z' fill='#303f7a'></path>
+                    <path d='M151,31l17-3-17-3c4,2,4,4,0,6' fill='#303f7a'></path>
+                </svg>
+                <p>I have been telling all non-IBMers to not use my ibm.com email address for years, but this advice is routinely ignored.  I’ve repeated the reaons behind why I ask this enough times that it makes sense for me to post the reasons in one place so that I can point to it.</p>
+                <p>The back story is that 15 years ago I wrote some open source code in a programming language called Java.  I don’t use that language much any more, but I understand that it remains popular in some circles.  In any case, javadoc style comments encouraged sharing your email address, and my employer discouraged me from doing anything that would hide my relationship with them, so my email address was put out on the web.</p>
+                <p>The inevitable result is that I’m deluged with spam, most in languages I am not familiar with.</p>
+                <p>My personal email I have control over and the spam tools (all open source) I use are largely effective.  I don’t have that option with my corporate email.  As others within IBM don’t have this problem, I am clearly an outlier.</p>
+                <p>Over time, I was missing enough important work-related emails that I tought myself enough LotusScript to write a script that I can invoke as an ‘Action’.  This script identifies emails that were sent from outside of Lotus Notes and places them into a separate folder.  If I am alerted to the presence of a single email, and given enough information (like senders name and time it was sent) I can generally find the email; but in general people should assume that emails sent to my corporate email address from outside of IBM are never seen by me.</p>
+                <p>Another downside of this is that some of my IBM email is sent from service machines that don’t interface directly with Lotus Notes.  That means that I miss some important updates.  And important reminders.  Eventually such reminders copy my manager, who sends them on to me.</p>
+                <p>Apparently there is plans in the works to migrate corporate email to the “cloud”.  Perhaps that will be better.  Perhaps I will need to find a way to reimplement my filter or equivalent.  Or perhaps it won’t be something that I
+                    <a href="http://www.cringely.com/2015/01/22/ibms-reorg-hell-launches-next-week/">won’t need to worry about any more</a>.
+                </p>
+            </div>
+        </content>
+        <updated>2015-01-28T08:48:39-08:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3346</id>
+        <link href="/blog/2015/01/22/React-rb"/>
+        <link rel="replies" href="3346.atom" thr:count="89" thr:updated="2018-08-17T08:41:54-07:00"/>
+        <title>React.rb</title>
+        <summary type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">Having determined that Angular.js is overkill for my
+                <a href="http://intertwingly.net/blog/2014/12/19/Weblog-Software-Rewrite-Underway">blog rewrite</a>, I started looking more closely at
+                <a href="http://facebook.github.io/react/">React</a>.  It occurred to me that I could do better than
+                <a href="http://facebook.github.io/jsx/">JSX</a>, so I wrote a
+                <a href="https://github.com/rubys/ruby2js">Ruby2JS</a> filter.  Compare for yourself.
+            </div>
+        </summary>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+                    <g transform="translate(50,50)">
+                        <circle fill="#00D8FF" r="8"></circle>
+                        <g fill="none" stroke="#00D8FF" stroke-width="4">
+                            <ellipse rx="45" ry="17"></ellipse>
+                            <ellipse rx="45" ry="17" transform="rotate(60)"></ellipse>
+                            <ellipse rx="45" ry="17" transform="rotate(120)"></ellipse>
+                        </g>
+                    </g>
+                </svg>
+                <p>Having determined that Angular.js is overkill for my
+                    <a href="http://intertwingly.net/blog/2014/12/19/Weblog-Software-Rewrite-Underway">blog rewrite</a>, I started looking more closely at
+                    <a href="http://facebook.github.io/react/">React</a>.  It occurred to me that I could do better than
+                    <a href="http://facebook.github.io/jsx/">JSX</a>, so I wrote a
+                    <a href="https://github.com/rubys/ruby2js">Ruby2JS</a> filter.  Compare for yourself.  Excerpt from the
+                    <a href="http://facebook.github.io/react/docs/tutorial.html">React tutorial</a>:
+                </p>
+                <pre class="code">var CommentList = React.createClass({  render: function() {    var commentNodes = this.props.data.map(function (comment) {      return (        &lt;Comment author={comment.author}&gt;          {comment.text}        &lt;/Comment&gt;      );    });    return (      &lt;div className="commentList"&gt;        {commentNodes}      &lt;/div&gt;    );  }
+});</pre>
+                <p>Equivalent using the Ruby2JS filter:</p>
+                <pre class="code">class CommentList &lt; React  def render    _div.commentList do      @@data.forEach do |comment|        _CommentBlock comment.text, author: comment.author      end    end  end
+end</pre>
+                <p>Note: I renamed the
+                    <code>Comment</code> class to
+                    <code>CommentBlock</code> to avoid a conflict with the existing
+                    <a href="https://developer.mozilla.org/en-US/docs/Web/API/Comment">Comment</a> API.  I wouldn’t have thought that would be necessary, but things didn’t work until I made this change.
+                </p>
+                <p>
+                    <a href="https://github.com/rubys/ruby2js/blob/master/demo/react-tutorial.rb">Full source</a> for the tutorial reimplemented in Ruby is available.
+                </p>
+            </div>
+        </content>
+        <updated>2015-01-22T17:54:56-08:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3345</id>
+        <link href="/blog/2015/01/17/RFC-3986bis"/>
+        <link rel="replies" href="3345.atom" thr:count="119" thr:updated="2018-08-20T10:39:54-07:00"/>
+        <title>RFC 3986bis</title>
+        <summary type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">URL parsers consume URLs and generate URIs.  Such URIs are not
+                <a href="http://www.ietf.org/rfc/rfc3986.txt">RFC 3986</a> complaint.  I’d like to fix that.
+            </div>
+        </summary>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns='http://www.w3.org/2000/svg' width="132" height="76" viewBox="0 0 132 76">
+                    <path d='M57,29c0-9,18-12,17-2c0,7-12,10-12,18v5h8v-3c0-7,13-9,13-21c-1-16-34-16-34,3zM62,53h8v8h-8z' fill='#371'></path>
+                    <circle cy='38' stroke='#371' fill='none' r='33' stroke-width='10' cx='66'></circle>
+                    <path d='M45,17l9,9l-9,10l-9-10zM67,17l9,9l-9,10l-10-10zM88,17l9,9l-9,10l-9-10zM14,28l9,9l-9,9l-9-9zM35,28l9,9l-9,9l-9-9zM56,28l9,9l-9,9l-9-9zM77,28l9,9l-9,9l-9-9zM98,28l9,9l-9,9l-9-9zM119,28l10,9l-10,9l-9-9zM45,39l9,9l-9,9l-9-9zM67,39l9,9l-9,9l-10-9zM88,39l9,9l-9,9l-9-9z' fill='#bdbdc5'></path>
+                    <path d='M44,13l9,31l9-31h25v3l-10,16c23,7,2,52-16,21l6-2c11,21,24-16,2-14v-3l9-15h-11l-13,44h-1l-10-31l-9,31h-1l-15-50h7l9,31l6-21l-3-10z' fill='#005A9C'></path>
+                    <path stroke='#000' d='M5,36h20l10,10l10-10l11,10l21-21l11,11l10-11l12,11h19v3h-20l-11-11l-10,11l-11-11l-21,21l-11-10l-10,10l-11-10h-19z' fill='#ffd652' stroke-width='0.5'></path>
+                    <path d='M88,49c11,24,22,11,26,5l-1-5c-12,20-24,2-25,0M109,21c-8-16-26,0-16,23c-4-23,12-29,17-16l4-8l-1-6'></path>
+                    <path d='M2,35h5v5h-5zM127,35h5v5h-5z'></path>
+                    <path d='M57,29c0-9,18-12,17-2c0,7-12,10-12,18v5h8v-3c0-7,13-9,13-21c-1-16-34-16-34,3zM62,53h8v8h-8z' fill='#371'></path>
+                </svg>
+                <p>TL;DR: URL parsers consume URLs and generate URIs.  Such URIs are not
+                    <a href="http://www.ietf.org/rfc/rfc3986.txt">RFC 3986</a> complaint.  I’d like to fix that.
+                </p>
+                <p> - - -</p>
+                <p>Let’s talk a bit about nomenclature.</p>
+                <p>On the web, particularly in places like values of attributes named
+                    <a href="http://www.w3.org/TR/html5/links.html#links-created-by-a-and-area-elements">href</a>, there are things that people have, at various times, attempted to call
+                    <a href="http://en.wikipedia.org/wiki/Uniform_resource_locator">web addresses</a> or
+                    <a href="http://www.ietf.org/rfc/rfc3987.txt">IRIs</a>.  Neither term has stuck.  In common uses these are called
+                    <a href="https://url.spec.whatwg.org/">URLs</a>.
+                </p>
+                <p>In between the markup and servers, there are user agents.  One such user agent is a browser.  Browsers don’t passively send URLs along, they reject some outright, and transform others.  There should be a name for the set of outputs of the various cleanups that browsers perform.</p>
+                <p>Since browsers are programmable, you can directly observe this transformation.  The WHATWG URL specification defines an
+                    <a href="https://url.spec.whatwg.org/#api">API</a> which has already been implemented by Firefox and Chrome, and is being evaluated by Microsoft and Apple.  Create a JavaScript console and enter the following:
+                </p>
+                <pre class="code">new URL("hTtP:/EXamPLe.COM/").href</pre>
+                <p>The output you will see is:</p>
+                <pre class="code">"http://example.com/"</pre>
+                <p>The output is clearly much cleaner and more consistent than the input.  In fact, in this case the output is RFC 3986 compliant.</p>
+                <p>Unfortunately, in the general case, this isn’t true.  Browsers (and more generally: other libraries like the ones found in pretty much every modern programming language) can produce things that aren’t RFC 3986 compliant.</p>
+                <p>I’m
+                    <a href="https://url.spec.whatwg.org/interop/test-results/">looking</a> at every browser and every library I can.  I’m specifically looking for differences.  In some cases, I’m pointing out where such outputs are clearly wrong and need to be fixed.
+                </p>
+                <p>In other cases, the output may not be RFC 3986 compliant, but actually are useful and actually work.  What this means in practice is that the set of things that consumers need to be able to correctly process is not defined by RFC 3986 but by these tools.</p>
+                <p>People can learn this the hard way by starting out to implement RFC 3986 and then finding that they need to reverse engineer other tools.  We can do better.  We can set out to update RFC 3986 or otherwise document what the actual set of inputs that can be expected to interoperably process is.</p>
+                <p>In general, I have found that it isn’t difficult to talk about places where RFC 3986 can be tightened up.  Where there has been push-back is exploring any notion of loosening the definition.  The reaction generally is expressed along the lines of “doing so would break things”.</p>
+                <p>I can see how some see such a position as reasonable.  I don’t, and I’ll tell you why.  What is effectively being said is that documenting how things actually work will break things, which is clearly untrue.</p>
+                <p>What such an effort will do is not break things, but uncover uncomfortable truths.  To build upon an
+                    <a href="http://www.ietf.org/mail-archive/web/apps-discuss/current/msg13827.html">example</a> from Dave Cridland, one such uncomfortable truth may be that the sets of things that everybody except LDAP schemas can handle is different than the sets of things LDAP schemas can handle.
+                </p>
+                <p>There are three ways to handle that.  One would be to change everybody to conform to what LDAP can handle.  One would be to change LDAP.  And one would be to document clearly that the set of things LDAP can handle and the set of things that everybody else expects to be handled are separate sets.  Largely overlapping, yes, but not identical sets.</p>
+                <p>While documenting three sets (the set of things Chrome and other browser supports, the set of things HTTP and other protocols support, and the set of things LDAP supports) would not be my first choice, but it may be the only option available given the constraints.</p>
+                <p>If you look at those three sets, ideally each would be a proper subset of these that precede it.  That’s not currently the case at the moment, but as I mentioned proposals made with clear rationale provided to tighten up RFC 3986 don’t seem to be getting much push-back.</p>
+                <p>What we need then it three names.  URIs seem to be the obvious choice for name of the set of “things LDAP schemas support”.  For better or worse, URLs seem to be the name that has stuck for the first set.</p>
+                <p>At this point, a number of people seeing an opening suggest IRIs as the name for the set in the middle.  Um, no.  Except for fragments, this set is 100% pure ASCII.  The name for what IRIs attempted to define is URLs.</p>
+                <p>So this means that we need to define a new name.  That’s not so bad, is it?  It could be worse, at least we don’t have to define a
+                    <a href="http://martinfowler.com/bliki/TwoHardThings.html">cache invalidation</a> strategy.
+                </p>
+            </div>
+        </content>
+        <updated>2015-01-17T10:55:26-08:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3344</id>
+        <link href="/blog/2015/01/11/URL-Work-Status"/>
+        <link rel="replies" href="3344.atom" thr:count="198" thr:updated="2018-08-20T22:16:40-07:00"/>
+        <title>URL Work Status</title>
+        <summary type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <p>I have
+                    <a href="https://url.spec.whatwg.org/interop/test-results/">test results</a> that
+show that there is much work to be done.
+                </p>
+                <p>The most likely path forward
+at this point is to get representatives from browser vendors into a room and
+go through these results and make recommendations.  This likely will happen in
+the spring, and in the SF Bay Area.  With that in place, I can work with
+authors of libraries in popular programming languages to produce
+web-compatible versions.  This work will take the form of bug reports,
+patches, or — when required — authoring new libraries.</p>
+            </div>
+        </summary>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns='http://www.w3.org/2000/svg' width="132" height="76" viewBox="0 0 132 76">
+                    <path d='M57,29c0-9,18-12,17-2c0,7-12,10-12,18v5h8v-3c0-7,13-9,13-21c-1-16-34-16-34,3zM62,53h8v8h-8z' fill='#371'></path>
+                    <circle cy='38' stroke='#371' fill='none' r='33' stroke-width='10' cx='66'></circle>
+                    <path d='M45,17l9,9l-9,10l-9-10zM67,17l9,9l-9,10l-10-10zM88,17l9,9l-9,10l-9-10zM14,28l9,9l-9,9l-9-9zM35,28l9,9l-9,9l-9-9zM56,28l9,9l-9,9l-9-9zM77,28l9,9l-9,9l-9-9zM98,28l9,9l-9,9l-9-9zM119,28l10,9l-10,9l-9-9zM45,39l9,9l-9,9l-9-9zM67,39l9,9l-9,9l-10-9zM88,39l9,9l-9,9l-9-9z' fill='#bdbdc5'></path>
+                    <path d='M44,13l9,31l9-31h25v3l-10,16c23,7,2,52-16,21l6-2c11,21,24-16,2-14v-3l9-15h-11l-13,44h-1l-10-31l-9,31h-1l-15-50h7l9,31l6-21l-3-10z' fill='#005A9C'></path>
+                    <path stroke='#000' d='M5,36h20l10,10l10-10l11,10l21-21l11,11l10-11l12,11h19v3h-20l-11-11l-10,11l-11-11l-21,21l-11-10l-10,10l-11-10h-19z' fill='#ffd652' stroke-width='0.5'></path>
+                    <path d='M88,49c11,24,22,11,26,5l-1-5c-12,20-24,2-25,0M109,21c-8-16-26,0-16,23c-4-23,12-29,17-16l4-8l-1-6'></path>
+                    <path d='M2,35h5v5h-5zM127,35h5v5h-5z'></path>
+                    <path d='M57,29c0-9,18-12,17-2c0,7-12,10-12,18v5h8v-3c0-7,13-9,13-21c-1-16-34-16-34,3zM62,53h8v8h-8z' fill='#371'></path>
+                </svg>
+                <p>I have
+                    <a href="https://url.spec.whatwg.org/interop/test-results/">test
+results</a> that show that there is much work to be done.
+                </p>
+                <p>The most likely path forward at this point is to get representatives from
+browser vendors into a room and go through these results and make
+recommendations.  This likely will happen in the spring, and in the SF Bay
+Area.  With that in place, I can work with authors of libraries in popular
+programming languages to produce web-compatible versions.  This work will take
+the form of bug reports, patches, or — when required — authoring new
+libraries.</p>
+                <p>Status by venue:</p>
+                <dl>
+                    <dt>
+                        <b>WHATWG</b>
+                    </dt>
+                    <dd>
+                        <p>At the WHATWG, I’m limited only by my own ability to do the work
+required.  My biggest complaint remains that that the barrier to entry to
+participate is too high.  This. however, is something entirely under my
+control to fix for the specifications I’m working on.  I’m hopeful that
+leading by example will cause others in the WHATWG to do likewise.</p>
+                    </dd>
+                    <dt>
+                        <b>WebPlatform</b>
+                    </dt>
+                    <dd>
+                        <p>I’ve had
+                            <a href="https://github.com/webspecs/url/issues">some success</a>,
+but virtually all of this is attributable to GitHub, not WebPlatform.  At the
+moment, technical issues prevent me from updating the spec there.  These
+issues started on December 24th and were promptly reported.  If this
+continues, I’ll push the webspecs develop branch to a whatwg develop branch
+and
+                            <a href="https://github.com/IQAndreas/github-issues-import">migrate the
+issues</a>.
+                        </p>
+                    </dd>
+                    <dt>
+                        <b>W3C</b>
+                    </dt>
+                    <dd>
+                        <p>There has been no demonstrable progress in the WebApps WG.  The
+                            <a href="http://www.w3.org/2001/tag/">TAG</a> seems generally supportive.  I
+briefed the
+                            <a href="http://www.w3.org/2002/ab/">AB</a>, but nothing has come
+of that.  Same is
+                            <a href="http://www.w3.org/community/w3process/track/issues/150">true</a> for the
+process CG.  I’m willing to try proposing a
+                            <a href="http://rawgit.com/webspecs/url/develop/docs/url-charter.html">new
+working group</a>.  Failing this, I believe that I have all the evidence I
+need to convince the W3C Director that
+                            <a href="http://www.w3.org/2013/09/normative-references">normative references</a>
+to the Living Standard are the only viable alternative.  As Sherlock Holmes
+was known to say:
+                            <em>when you have eliminated the impossible, whatever
+remains, however improbable, must be the truth</em>.
+                        </p>
+                    </dd>
+                    <dt>
+                        <b>IETF</b>
+                    </dt>
+                    <dd>
+                        <p>I’ve
+                            <a href="https://lists.w3.org/Archives/Public/public-whatwg-archive/2014Nov/0000.html">met
+with</a> Area Directors.  I’ve participated on the
+                            <a href="http://www.ietf.org/mail-archive/web/apps-discuss/current/maillist.html">apps-discuss
+mailing list</a>.  With the help of
+                            <a href="http://larry.masinter.net/">Larry
+Masinter</a>, I’ve produced and published a
+                            <a href="http://xml2rfc.tools.ietf.org/cgi-bin/xml2rfc.cgi?url=https%3A%2F%2Fraw.githubusercontent.com%2Fwebspecs%2Furl%2Fdevelop%2Fdocs%2Furl-problem-statement.xml&amp;modeAsFormat=html%2Fascii">problem
+statement</a>.  Sadly, this seems like a clear case of
+                            <em>you can lead a
+horse to water, but you can’t make it drink</em>.  Should this change, I have
+until
+                            <a href="http://www.ietf.org/meeting/important-dates-2015.html">February
+5th</a> to propose a BOF.
+                        </p>
+                    </dd>
+                </dl>
+                <p>More details and links are available in the
+
+                    <a href="https://github.com/webspecs/url#the-url-standard">README</a>.
+                </p>
+            </div>
+        </content>
+        <updated>2015-01-11T06:46:06-08:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3343</id>
+        <link href="/blog/2015/01/08/Ununzippable-Modern-IE"/>
+        <link rel="replies" href="3343.atom" thr:count="114" thr:updated="2018-08-20T15:21:45-07:00"/>
+        <title>Ununzippable Modern.IE</title>
+        <summary type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">I’ve downloaded the multi-part zip archive for IE11 on Win10 for VirtualBox on OS/X from
+                <a href="https://www.modern.ie/">modern.ie</a>.  I’ve downloaded the single-file archive on both OS/X and Linux.  I’ve verified the md5 signatures for each.  Yet each time, when I try to unzip the result, I fail.
+            </div>
+        </summary>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+                    <path d="M57,11c40-22,42-2,35,12c8-27-15-20-30-11z" fill="#47b"></path>
+                    <path d="M36,56h56c4-60-83-60-86-6c13-16,26-26,36-30l-29,53c20,23,64,26,79-12h-30c0,14-26,12-25-5zM37,43c0-17,26-17,26,0zM39,89c-10,7-42,15-26-16l29-52c-15,6-36,40-37,48c-12,35,14,37,37,20" fill="#47b"></path>
+                </svg>
+                <p>I’ve downloaded the multi-part zip archive for IE11 on Win10 for VirtualBox on OS/X from
+                    <a href="https://www.modern.ie/">modern.ie</a>.  I’ve downloaded the single-file archive on both OS/X and Linux.  I’ve verified the md5 signatures for each.  Yet each time, when I try to unzip the result, I get the following:
+                </p>
+                <pre class="code">$ unzip IE11.Win10.For.LinuxVirtualBox.zip
+Archive:  IE11.Win10.For.LinuxVirtualBox.zip
+warning [IE11.Win10.For.LinuxVirtualBox.zip]:  4294967296 extra bytes at beginning or within zipfile  (attempting to process anyway)
+file #1:  bad zipfile offset (local header sig):  4294967296  (attempting to re-compensate)  inflating: IE11 - Win10.ova  error:  invalid compressed data to inflate</pre>
+                <p>I’ve even tried
+                    <a href="http://serverfault.com/a/434537">jar xf</a> with no luck:
+                </p>
+                <pre class="code">$ jar xf IE11.Win10.For.LinuxVirtualBox.zip
+java.util.zip.ZipException: invalid entry size (expected 5632888297048912 but got 4801961472 bytes)	at java.util.zip.ZipInputStream.readEnd(ZipInputStream.java:403)	at java.util.zip.ZipInputStream.read(ZipInputStream.java:195)	at java.util.zip.ZipInputStream.closeEntry(ZipInputStream.java:139)	at sun.tools.jar.Main.extractFile(Main.java:961)	at sun.tools.jar.Main.extract(Main.java:877)	at sun.tools.jar.Main.run(Main.java:263)	at sun.tools.jar.Main.main(Main.java:1177)</pre>
+                <p>This shows signs of
+                    <a href="http://googology.wikia.com/wiki/4294967296">integer overflow</a>, so it seems likely that the problem is client side.  Even with that said, choosing to make a this content available in a format for which there isn’t working client libraries available to unpack it isn’t helpful.
+                </p>
+                <p>I’m submitting this link as
+                    <a href="https://www.modern.ie/en-us/feedback">feedback</a>.
+                </p>
+            </div>
+        </content>
+        <updated>2015-01-08T03:55:41-08:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3342</id>
+        <link href="/blog/2015/01/06/New-PhantomJS-and-Capybara-fan"/>
+        <link rel="replies" href="3342.atom" thr:count="62" thr:updated="2018-08-20T12:23:34-07:00"/>
+        <title>New PhantomJS and Capybara fan</title>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns='http://www.w3.org/2000/svg' width="96" height="104" viewBox="0 0 96 104">
+                    <path d='M4,88c4,3,10,1,16,3c4,1,6,11,11,9c5-1,14-6,20-4c6,1,13,12,17,7c4-5,6-16,16-15c10,1,12,1,11-12c-1-7,5-13-3-18c-13-9-34-3-46,5c-14,10-47,20-42,25' fill='#000' fill-opacity='0.23'></path>
+                    <path d='M82,43c0,22,9,27,9,37c0,5-12,1-17,4c-4,3-2,7-9,9c-4,2-10-6-17-6c-5,0-14,7-19,4c-4-2-4-9-10-10c-6,0-19,7-19,1c0-7,8-14,8-39c0-23,17-43,37-42c21,0,37,20,37,44' fill='#ccc' fill-opacity='0.63' stroke='#000'></path>
+                    <path d='M33,22c-5,0-9,4-9,10c0,6,4,10,9,10c4,0,7-2,9-6c1,4,4,6,8,6c5,0,9-4,9-10c0-6-4-10-9-10c-4,0-7,2-8,6c-2-4-5-6-9-6' fill='#fff' stroke='#000'></path>
+                    <circle cx="36" cy="34" r="4"></circle>
+                    <circle cx="48" cy="34" r="4"></circle>
+                    <path d='M69,15c2,0,9,9,10,19l2,23c1,6,10,22,6,21c-8,0-13-13-12-33c3-21-9-29-6-30M73,82c-2,2-6,11-7,7c-2-4-1-11-2-22c-1-8-5-18-2-16c3,1,5,5,7,13c3,7,6,16,4,18M45,85c-2,2-6,4-9,3c-3,0-3-10-2-17c1-6,4-16,6-17c2-2,0,6,2,18c2,8,5,11,3,13
+M20,79c-2,0-5,0-7,1c-3,1,0-4,4-11c3-6,4-12,5-14c2-2,0,6-1,13c0,7,1,11-1,11' fill-opacity='0.12'></path>
+                </svg>
+                <p>While I’m clearly late to the party, I’ve already become a huge fan of
+                    <a href="http://jnicklas.github.io/capybara/">capybara</a> and
+                    <a href="http://phantomjs.org/">phantomjs</a>.  I’m now using both with my
+                    <a href="http://intertwingly.net/blog/2014/12/19/Weblog-Software-Rewrite-Underway">previously mentioned</a>
+                    <a href="https://github.com/rubys/wicker">blogging software</a> rewrite.
+                </p>
+                <p>My original intent was to aggressively prune unnecessary function with the intent of producing a more maintainable result, but with the ability to have automated acceptance tests, this is now less of a concern.</p>
+            </div>
+        </content>
+        <updated>2015-01-06T11:47:40-08:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3341</id>
+        <link href="/blog/2015/01/05/Apple-Apostasy"/>
+        <link rel="replies" href="3341.atom" thr:count="84" thr:updated="2018-08-20T03:09:05-07:00"/>
+        <title>Apple Apostasy</title>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns='http://www.w3.org/2000/svg' width="90" height="100" viewBox="0 0 90 100">
+                    <path d='M62,0c2,10-9,24-20,24c-3-14,9-22,20-24M5,36c5-8,13-12,21-12c7,0,12,4,19,4c6,0,10-4,19-4c6,0,14,3,19,10c-16,4-15,35,3,39c-7,17-18,27-24,27c-7,0-8-5-17-5c-9,0-11,5-17,5c-7-1-13-7-17-13c-9-10-15-40-6-51' fill='#AAA'></path>
+                </svg>
+                <p>Looks like
+                    <a href="http://wozniak.ca/why-i-quit-os-x">Why I quit OS X</a> struck a nerve — it is currently down (see
+                    <a href="http://web.archive.org/web/20150105063342/http://wozniak.ca/why-i-quit-os-x">web archive</a>).  Also good:
+                    <a href="http://www.marco.org/2015/01/04/apple-lost-functional-high-ground">Apple has lost the functional high ground</a>.
+                </p>
+                <p>I particularly like the comment that
+                    <em>“It just works” was never completely true</em>.  My experience is that when working with open source codebases, doing so on an Linux operating system comes much closer to “It just works” than doing so on any other.
+                </p>
+            </div>
+        </content>
+        <updated>2015-01-05T12:09:46-08:00</updated>
+    </entry>
+    <entry>
+        <id>tag:intertwingly.net,2004:3340</id>
+        <link href="/blog/2015/01/03/Rack-broke-Sinatra"/>
+        <link rel="replies" href="3340.atom" thr:count="100" thr:updated="2018-08-16T23:37:48-07:00"/>
+        <title>Rack broke Sinatra</title>
+        <content type="xhtml">
+            <div
+                xmlns="http://www.w3.org/1999/xhtml">
+                <svg style="float:right"
+                    xmlns="http://www.w3.org/2000/svg" width="90" height="111" viewBox="0 0 90 111">
+                    <g stroke-linejoin="bevel" stroke-linecap="square" fill="none" stroke="#000">
+                        <path d="M6,15l30-10l49,11v82v-82l-24,8v83v-83l-55-9v83l56,8l23-8" stroke-width="4"></path>
+                        <path d="M6,98l27-9v-13l-26-4l27-8v-20l-27-5l28-8v-11v11l49,10l-24,8l-26-5v20l50,8l-24,9l-27-5v13l51,8" stroke-width="2"></path>
+                    </g>
+                </svg>
+                <p>Not rack’s fault, but Sinatra hasn’t released in a while.  Problem has been known since
+                    <a href="https://github.com/sinatra/sinatra/pull/907">July</a>, and a fix was merged into master in
+                    <a href="https://github.com/sinatra/sinatra/commit/a43ba2c65a79bf58adc1291b0079ea889310e072">August</a>.  One
+                    <a href="https://github.com/honeybadger-io/honeybadger-ruby/commit/0e1d652992160fcf1bb3f2e53fbfafdad4d9047d">possible workaround</a> has been posted.  An alternate workaround:
+                </p>
+                <pre class="code">module Rack  class ShowExceptions    alias_method :old_pretty, :pretty    def pretty(*args)      result = old_pretty(*args)      def result.join; self; end      def result.each(&amp;block); block.call(self); end      result    end  end
+end</pre>
+            </div>
+        </content>
+        <updated>2015-01-03T17:31:33-08:00</updated>
+    </entry>
+</feed>
