@@ -9,8 +9,7 @@ use DOMElement;
 
 class RDFFeedItem extends BaseFeedItem
 {
-    public function __construct(DOMElement $item, XPath $xpath,
-        bool $remove_styles, bool $remove_scripts)
+    public function __construct(DOMElement $item, XPath $xpath, array $parser_options)
     {
         $property_selectors = [
             'id' => '@rdf:about',
@@ -37,8 +36,7 @@ class RDFFeedItem extends BaseFeedItem
             $item,
             $xpath,
             $property_selectors,
-            $remove_styles,
-            $remove_scripts
+            $parser_options
         );
     }
 }

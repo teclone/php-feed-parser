@@ -8,8 +8,7 @@ use Forensic\FeedParser\XPath;
 
 class RSSFeed extends BaseFeed
 {
-    public function __construct(XPath $xpath, string $default_lang,
-        bool $remove_styles, bool $remove_scripts)
+    public function __construct(XPath $xpath, string $default_lang, array $parser_options)
     {
         $namespaces = [
             'def' => 'http://purl.org/rss/1.0/',
@@ -48,8 +47,7 @@ class RSSFeed extends BaseFeed
             $namespaces,
             $property_selectors,
             $items_selector,
-            $remove_styles,
-            $remove_scripts
+            $parser_options
         );
     }
 }

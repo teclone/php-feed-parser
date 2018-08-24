@@ -9,8 +9,7 @@ use DOMElement;
 
 class ATOMFeedItem extends BaseFeedItem
 {
-    public function __construct(DOMElement $item, XPath $xpath,
-        bool $remove_styles, bool $remove_scripts)
+    public function __construct(DOMElement $item, XPath $xpath, array $parser_options)
     {
         $property_selectors = [
             'id' => 'atom:id || atom:source/atom:id',
@@ -53,8 +52,7 @@ class ATOMFeedItem extends BaseFeedItem
             $item,
             $xpath,
             $property_selectors,
-            $remove_styles,
-            $remove_scripts
+            $parser_options
         );
     }
 }

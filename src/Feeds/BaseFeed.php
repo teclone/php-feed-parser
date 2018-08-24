@@ -88,21 +88,23 @@ class BaseFeed
      *@param array $namespaces - the namespaces to be used in processing the feed
      *@param array $property_selectors - array of alternate property xpath selectors
      *@param string $item_selector - xpath expression that selects feed items,
-     *@param bool $remove_styles - boolean indicating if style elements and attributes should
-     * be stripped out
-     *@param bool $remove_scripts - boolean indicating if script elements and on*
-     * event handlers should be removed
+     *@param array $parser_options - array of parser options
+     *@param string $parser_options['date-template'] - the date template used when processing dates
+     *@param bool $parser_options['remove-styles'] - boolean indicating if style elements and
+     * attributes should be stripped out
+     *@param bool $parser_options['remove-scripts'] - boolean indicating if script elements
+     * and on* event handlers should be removed
     */
     public function __construct(FeedTypes $feed_type, string $default_lang, XPath $xpath,
         array $namespaces, array $property_selectors, string $item_selector,
-        bool $remove_styles, bool $remove_scripts)
+        array $parser_options)
     {
         $this->_type = $feed_type;
         $this->_language = $default_lang;
 
         //register namespaces and parse the feed
         $xpath->registerNamespaces($namespaces);
-        $this->parse($xpath, $property_selectors, $remove_styles, $remove_scripts);
+        $this->parse($xpath, $property_selectors, $parser_options);
 
         $item_class = null;
         switch($feed_type->value())
@@ -120,7 +122,7 @@ class BaseFeed
         //get items and parse
         $items = $xpath->selectAltNodes($item_selector);
         for ($i = 0, $len = $items->length; $i < $len; $i++)
-            $this->_items[] = new $item_class($items->item($i), $xpath, $remove_styles, $remove_scripts);
+            $this->_items[] = new $item_class($items->item($i), $xpath, $parser_options);
     }
 
     /**

@@ -8,7 +8,8 @@ use Forensic\FeedParser\XPath;
 
 trait Parser
 {
-    private function filterPropertyValue(string $property_name, string $value)
+    private function filterPropertyValue(string $property_name, string $value,
+        array $parser_options)
     {
         if ($value === '')
             return '';
@@ -17,7 +18,7 @@ trait Parser
         {
             case 'lastUpdated':
                 $timestamp = strtotime($value);
-                $value = date('jS F, Y, g:i A', $timestamp);
+                $value = date($parser_options['date-template'], $timestamp);
                 break;
         }
         return $value;
@@ -36,7 +37,7 @@ trait Parser
      *@return string
     */
     private function resolveProperty(XPath $xpath, string $property_name,
-        string $property_selectors, bool $remove_styles, bool $remove_scripts)
+        string $property_selectors, array $parser_options)
     {
         $node = $xpath->selectAltNode($property_selectors);
         if (is_null($node))
@@ -47,7 +48,7 @@ trait Parser
             $type = $xpath->selectNode('@type', $node)->nodeValue;
 
         if ($type === 'text' || $type === 'html')
-            return $this->filterPropertyValue($property_name, $node->nodeValue);
+            return $this->filterPropertyValue($property_name, $node->nodeValue, $parser_options);
 
         //dealing with text construct of type xhtml
         $div = null;
@@ -79,7 +80,8 @@ trait Parser
             $serialized_content
         );
 
-        if ($remove_styles) {
+        if ($parser_options['remove-styles'])
+        {
             //remove style attributes
             $filtered_content = preg_replace_callback(
                 '/(<[^>]+)\s+style=("[^"]*"|\'[^\']*\')/im',
@@ -97,7 +99,7 @@ trait Parser
             );
         }
 
-        if ($remove_scripts)
+        if ($parser_options['remove-scripts'])
         {
             //remove all on* event attribute handlers
             $filtered_content = preg_replace_callback(
@@ -116,7 +118,7 @@ trait Parser
             );
         }
 
-        return $this->filterPropertyValue($property_name, $filtered_content);
+        return $this->filterPropertyValue($property_name, $filtered_content, $parser_options);
     }
 
     /**
@@ -130,8 +132,8 @@ trait Parser
      *@param bool $remove_scripts - boolean indicating if on* event handlers attributes and
      * script elements should be remvoed if any
     */
-    private function parseArrayProperty(XPath $xpath, array &$store,
-        array $property_maps, bool $remove_styles, bool $remove_scripts)
+    private function parseArrayProperty(XPath $xpath, array &$store, array $property_maps,
+        array $parser_options)
     {
         foreach($property_maps as $property_name => $property_selectors)
         {
@@ -139,8 +141,7 @@ trait Parser
                 $xpath,
                 $property_name,
                 $property_selectors,
-                $remove_styles,
-                $remove_scripts
+                $parser_options
             );
         }
     }
@@ -184,8 +185,7 @@ trait Parser
      *@param bool $remove_scripts - boolean indicating if on* event handlers attributes and
      * script elements should be remvoed if any
     */
-    protected function parse(XPath $xpath, array $property_maps,
-        bool $remove_styles, bool $remove_scripts)
+    protected function parse(XPath $xpath, array $property_maps, array $parser_options)
     {
         foreach($property_maps as $property_name => $property_selectors)
         {
@@ -195,16 +195,14 @@ trait Parser
                     $xpath,
                     $this->{$this_property_name},
                     $property_selectors,
-                    $remove_styles,
-                    $remove_scripts
+                    $parser_options
                 );
             else
                 $this->{$this_property_name} = $this->resolveProperty(
                     $xpath,
                     $property_name,
                     $property_selectors,
-                    $remove_styles,
-                    $remove_scripts
+                    $parser_options
                 );
         }
     }

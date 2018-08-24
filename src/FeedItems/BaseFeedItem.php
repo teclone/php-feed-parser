@@ -87,13 +87,13 @@ class BaseFeedItem
      *@param array $property_selectors - array of property selector maps
     */
     public function __construct(FeedItemTypes $feed_item_type, DOMElement $item, XPath $xpath,
-        array $property_selectors, bool $remove_styles, bool $remove_scripts)
+        array $property_selectors, array $parser_options)
     {
         $this->_type = $feed_item_type;
 
         $xpath->setContextNode($item);
 
-        $this->parse($xpath, $property_selectors, $remove_styles, $remove_scripts);
+        $this->parse($xpath, $property_selectors, $parser_options);
         $this->parseImage();
     }
 
