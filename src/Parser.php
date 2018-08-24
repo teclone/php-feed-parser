@@ -25,21 +25,31 @@ use Forensic\FeedParser\Feeds\RDFFeed;
 */
 class Parser
 {
+    /** default parse language */
     private $_default_lang = '';
-    private $_remove_styles = null;
-    private $_remove_scripts = null;
+
+    /**
+     * parser options
+    */
+    private $_options = [
+        'remove-styles' => null,
+        'remove-scripts' => null,
+        'date-template' => ''
+    ];
 
     /**
      *@param string $default_lang - fallback feed default language.
+     *@param string $date_template - date template to use when parsing dates
      *@param bool $remove_styles - boolean value indicating if inline style attributes and
      * style elements should be removed
      *@param bool $remove_scripts - boolean value indicating if inline on* event script
      * attributes event listeners and script elements should be removed
     */
-    public function __construct(string $default_lang = 'en', bool $remove_styles = true,
-        bool $remove_scripts = true)
+    public function __construct(string $default_lang = 'en', string $date_template = '',
+        bool $remove_styles = true, bool $remove_scripts = true)
     {
         $this->setDefaultLanguage($default_lang);
+        $this->setDateTemplate($date_template);
         $this->removeStyles($remove_styles);
         $this->removeScripts($remove_scripts);
     }
@@ -50,6 +60,7 @@ class Parser
     public function setDefaultLanguage(string $default_lang)
     {
         $this->_default_lang = $default_lang;
+        return $this;
     }
 
     /**
@@ -61,6 +72,28 @@ class Parser
     }
 
     /**
+     * sets date template used when processing dates
+    */
+    public function setDateTemplate(string $date_template)
+    {
+        if ($date_template !== '')
+            $this->_options['date-template'] = $date_template;
+
+        else if ($this->_options['date-template'] === '')
+            $this->_options['date-template'] = 'jS F, Y, g:i A';
+
+        return $this;
+    }
+
+    /**
+     * return date template used when processing dates
+    */
+    public function getDateTemplate()
+    {
+        return $this->_options['date-template'];
+    }
+
+    /**
      * sets or returns the remove styles parse attributes
      *
      *@param bool [$remove_styles] - the remove styles attributes
@@ -69,9 +102,9 @@ class Parser
     public function removeStyles(bool $remove_styles = null)
     {
         if (is_null($remove_styles))
-            return $this->_remove_styles;
+            return $this->_options['remove-styles'];
 
-        $this->_remove_styles = $remove_styles;
+        $this->_options['remove-styles'] = $remove_styles;
         return $this;
     }
 
@@ -84,9 +117,9 @@ class Parser
     public function removeScripts(bool $remove_scripts = null)
     {
         if (is_null($remove_scripts))
-            return $this->_remove_scripts;
+            return $this->_options['remove-scripts'];
 
-        $this->_remove_scripts = $remove_scripts;
+        $this->_options['remove-scripts'] = $remove_scripts;
         return $this;
     }
 
@@ -126,8 +159,7 @@ class Parser
         return new $model(
             $xpath,
             $this->getDefaultLanguage(),
-            $this->removeStyles(),
-            $this->removeScripts()
+            $this->_options
         );
     }
 
