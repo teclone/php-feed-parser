@@ -190,5 +190,8 @@ XML;
 
         $this->assertInstanceOf('DOMNodeList', $result);
         $this->assertCount(1, $result);
+
+        $result = $this->_xpath->selectAltNodes(implode(' || ', [$non_existing, $non_existing]));
+        $this->assertNull($result);
     }
 }
