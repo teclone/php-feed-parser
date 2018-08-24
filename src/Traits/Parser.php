@@ -8,13 +8,17 @@ use Forensic\FeedParser\XPath;
 
 trait Parser
 {
-
     private function filterPropertyValue(string $property_name, string $value)
     {
-        if ($property_name === 'lastUpdated')
+        if ($value === '')
+            return '';
+
+        switch($property_name)
         {
-            //process date
-            $value = $value;
+            case 'lastUpdated':
+                $timestamp = strtotime($value);
+                $value = date('jS F, Y, g:i A', $timestamp);
+                break;
         }
         return $value;
     }
@@ -138,6 +142,35 @@ trait Parser
                 $remove_styles,
                 $remove_scripts
             );
+        }
+    }
+
+    /**
+     * parses feed item image
+    */
+    protected function parseImage()
+    {
+        $content = $this->_content;
+        $matches = [];
+
+        //capture img src
+        if (preg_match('/<img[^>]+src=("[^"]*"|\'[^\']*\')/im', $content, $matches))
+        {
+            $src = $matches[1];
+            $this->_image['src'] = substr($src, 1, strlen($src) - 2);
+
+            $matches = [];
+
+            //capture img alt
+            if (preg_match('/<img[^>]+alt=("[^"]*"|\'[^\']*\')/im', $content, $matches))
+            {
+                $src = $matches[1];
+                $this->_image['title'] = substr($src, 1, strlen($src) - 2);
+            }
+            else
+            {
+                $this->_image['title'] = $this->_title; //@codeCoverageIgnore
+            }
         }
     }
 
