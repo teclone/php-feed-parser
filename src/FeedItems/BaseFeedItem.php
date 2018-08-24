@@ -94,4 +94,13 @@ class BaseFeedItem
 
         $this->parse($xpath, $property_selectors, $remove_styles, $remove_scripts);
     }
+
+    public function __get(string $property)
+    {
+        $this_property = '_' . $property;
+        if (property_exists($this, $this_property))
+            return $this->{$this_property};
+        else
+            return null;
+    }
 }

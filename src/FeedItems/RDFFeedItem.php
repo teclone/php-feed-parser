@@ -27,7 +27,7 @@ class RDFFeedItem extends BaseFeedItem
             'lastUpdated' => 'dc:date', // a date construct
             'author' => 'dc:creator || dc:contributor',
             'category' => 'dc:coverage || dc:subject/taxo:topic/@rdf:value || dc:subject || ' .
-                'parent::rdf:RDF/def:channel/dc:coverage || ' +
+                'parent::rdf:RDF/def:channel/dc:coverage || ' .
             'parent::rdf:RDF/def:channel/dc:subject/taxo:topic/@rdf:value || ' .
                 'parent::rdf:RDF/def:channel/dc:subject' // defaults to the parent category
         ];
