@@ -10,6 +10,9 @@ use Forensic\FeedParser\Exceptions\ResourceNotFoundException;
 use Forensic\FeedParser\Exceptions\FileNotFoundException;
 use Forensic\FeedParser\Exceptions\MalformedFeedException;
 use Forensic\FeedParser\Exceptions\FeedTypeNotSupportedException;
+use Forensic\FeedParser\Feeds\ATOMFeed;
+use Forensic\FeedParser\Feeds\RSSFeed;
+use Forensic\FeedParser\Feeds\RDFFeed;
 
 class ParserTest extends TestCase
 {
@@ -61,16 +64,16 @@ class ParserTest extends TestCase
         $this->assertFalse($parser->removeScripts());
     }
 
-    public function testInvalidUrl()
+    public function testInvalidURL()
     {
         $this->expectException(InvalidURLException::class);
-        $this->_parser->parseFromUrl('www.google.com');
+        $this->_parser->parseFromURL('www.google.com');
     }
 
-    public function testUnExistingUrl()
+    public function testUnExistingURL()
     {
         $this->expectException(ResourceNotFoundException::class);
-        $this->_parser->parseFromUrl('http://feed.fjsfoundations.com');
+        $this->_parser->parseFromURL('http://feed.fjsfoundations.com');
     }
 
     public function testUnExistingFile()
@@ -89,5 +92,86 @@ class ParserTest extends TestCase
     {
         $this->expectException(FeedTypeNotSupportedException::class);
         $this->_parser->parseFromFile(__DIR__ . '/../phpunit.xml');
+    }
+
+    public function testATOMFeedParseResult()
+    {
+        $feed = $this->_parser->parseFromFile(__DIR__ . '/Helpers/Feeds/atom.xml');
+        $this->assertInstanceOf(ATOMFeed::class, $feed);
+    }
+
+    public function testRSSFeedParseResult()
+    {
+        $feed = $this->_parser->parseFromFile(__DIR__ . '/Helpers/Feeds/rss.xml');
+        $this->assertInstanceOf(RSSFeed::class, $feed);
+    }
+
+    public function testRDFFeedParseResult()
+    {
+        $feed = $this->_parser->parseFromFile(__DIR__ . '/Helpers/Feeds/rdf.xml');
+        $this->assertInstanceOf(RDFFeed::class, $feed);
+    }
+
+    public function testFromExistingURL()
+    {
+        $feed = $this->_parser->parseFromURL('https://www.yahoo.com/news/rss/mostviewed');
+        $this->assertInstanceOf(RSSFeed::class, $feed);
+    }
+
+    public function testFromString()
+    {
+        $parser = new Parser('en', false, false);
+        $feed = $parser->parseFromString(
+            file_get_contents(__DIR__ . '/Helpers/Feeds/atom.xml')
+        );
+        $this->assertInstanceOf(ATOMFeed::class, $feed);
+    }
+
+    /**
+     * test if it returns string when accessing existing property
+    */
+    public function testFeedExistingPropertyAccessibility()
+    {
+        $parser = new Parser('en', false, false);
+        $feed = $parser->parseFromString(
+            file_get_contents(__DIR__ . '/Helpers/Feeds/atom.xml')
+        );
+        $this->assertTrue(is_string($feed->id));
+    }
+
+    /**
+     * test if it returns null when accessing non existing property
+    */
+    public function testFeedNonExistingPropertyAccessibility()
+    {
+        $parser = new Parser('en', false, false);
+        $feed = $parser->parseFromString(
+            file_get_contents(__DIR__ . '/Helpers/Feeds/atom.xml')
+        );
+        $this->assertNull($feed->random);
+    }
+
+    /**
+     * test if it returns string when accessing existing property
+    */
+    public function testFeedItemExistingPropertyAccessibility()
+    {
+        $parser = new Parser('en', false, false);
+        $feed = $parser->parseFromString(
+            file_get_contents(__DIR__ . '/Helpers/Feeds/atom.xml')
+        );
+        $this->assertTrue(is_string($feed->items[0]->id));
+    }
+
+    /**
+     * test if it returns null when accessing non existing property
+    */
+    public function testFeedItemNonExistingPropertyAccessibility()
+    {
+        $parser = new Parser('en', false, false);
+        $feed = $parser->parseFromString(
+            file_get_contents(__DIR__ . '/Helpers/Feeds/atom.xml')
+        );
+        $this->assertNull($feed->items[0]->random);
     }
 }
