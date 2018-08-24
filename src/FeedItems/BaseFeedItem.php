@@ -94,6 +94,7 @@ class BaseFeedItem
         $xpath->setContextNode($item);
 
         $this->parse($xpath, $property_selectors, $remove_styles, $remove_scripts);
+        $this->parseImage();
     }
 
     /**
