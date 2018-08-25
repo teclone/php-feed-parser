@@ -20,4 +20,5 @@ jobs:
         script:
           - vendor/bin/phpunit
         after_success:
+          - php vendor/bin/php-coveralls
           - npm run semantic-release
