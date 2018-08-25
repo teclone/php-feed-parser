@@ -205,4 +205,28 @@ class ParserTest extends TestCase
         $feed = $this->_parser->parseFromFile(__DIR__ . '/Helpers/Feeds/rss.xml');
         $this->assertInstanceOf(ParameterBag::class, $feed->items[0]->enclosure);
     }
+
+    public function testFeedToArrayMethod()
+    {
+        $feed = $this->_parser->parseFromFile(__DIR__ . '/Helpers/Feeds/rss.xml');
+        $this->assertTrue(is_array($feed->toArray()));
+    }
+
+    public function testFeedItemToArrayMethod()
+    {
+        $feed = $this->_parser->parseFromFile(__DIR__ . '/Helpers/Feeds/rss.xml');
+        $this->assertTrue(is_array($feed->items[0]->toArray()));
+    }
+
+    public function testFeedToJSONMethod()
+    {
+        $feed = $this->_parser->parseFromFile(__DIR__ . '/Helpers/Feeds/rss.xml');
+        $this->assertTrue(is_string($feed->toJSON()));
+    }
+
+    public function testFeedItemToJSONMethod()
+    {
+        $feed = $this->_parser->parseFromFile(__DIR__ . '/Helpers/Feeds/rss.xml');
+        $this->assertTrue(is_string($feed->items[0]->toJSON()));
+    }
 }
