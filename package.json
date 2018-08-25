@@ -1,15 +1,17 @@
 {
   "name": "php-feed-parser",
-  "version": "1.0.0",
+  "version": "0.0.0-development",
   "description": "A fully integrated atom, rss and rdf syndication feed parser for php",
   "main": "index.js",
+  "private": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "commit": "git-cz"
+    "commit": "git-cz",
+    "semantic-release": "semantic-release"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/harrison-ifeanyichukwu/php-feed-parser.git"
+    "url": "https://github.com/harrison-ifeanyichukwu/php-feed-parser.git"
   },
   "author": "Harrison Ifeanyichukwu <Harrisonifeanyichukwu@gmail.com> (http://fjsfoundations.com/)",
   "license": "MIT",
@@ -19,7 +21,8 @@
   "homepage": "https://github.com/harrison-ifeanyichukwu/php-feed-parser#readme",
   "devDependencies": {
     "commitizen": "2.10.1",
-    "cz-conventional-changelog": "2.1.0"
+    "cz-conventional-changelog": "2.1.0",
+    "semantic-release": "^15.9.9"
   },
   "czConfig": {
     "path": "node_modules/cz-conventional-changelog"
