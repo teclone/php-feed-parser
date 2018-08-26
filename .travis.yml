@@ -8,14 +8,21 @@ script:
   - vendor/bin/phpunit
 jobs:
   include:
+    - stage: test
+      php: 7.1
+      before_script:
+        - composer install
+      script:
+        - vendor/bin/phpunit
     - stage: release
       php: 7.2
       before_install:
         - nvm install 10
       before_script:
-        - composer self-update
         - composer install
+        - npm install
       script:
         - vendor/bin/phpunit
       after_success:
         - php vendor/bin/php-coveralls
+        - npm run semantic-release
