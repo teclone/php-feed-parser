@@ -1,32 +1,26 @@
 # PHP Feed Parser
 
-PHP Feed Parser is a fully integrated syndication feed parser, with support for all major feed types including [RSS](http://cyber.harvard.edu/rss/rss.html), [ATOM](https://tools.ietf.org/html/rfc4287) & [RDF](http://web.resource.org/rss/1.0/spec) feeds.
+[![Build Status](https://travis-ci.org/harrison-ifeanyichukwu/php-feed-parser.svg?branch=master)](https://travis-ci.org/harrison-ifeanyichukwu/php-feed-parser)
 
-It produces clean, unified parse accross all the three supported feed types. It is configurable, lightweight and fully tested.
+PHP Feed Parser is a fully integrated web syndication feed parser. It can successfully parse all the three major syndication feeds which include [RSS](http://cyber.harvard.edu/rss/rss.html), [ATOM](https://tools.ietf.org/html/rfc4287) & [RDF](http://web.resource.org/rss/1.0/spec) feeds.
 
-It allows you to parse feeds from three different sources:
+It produces clean, unified parse accross all the three supported feed types. It is configurable, lightweight, fully tested and allows one to parse feeds from three different sources that includes **parsing from url, from file or from string**.
 
-1. From File using the `parseFromFile($file_abs_path)` method
-2. From URL using the `parseFromURL($url)` method
-3. From String using the `parseFromString($xml_string)` method
+## Getting Started
 
-## Install via Composer
-
-The project is available as a composer package.
+**Install via composer**:
 
 ```bash
 composer require forensic/feed-parser
 ```
 
-setup your project to require composer's `autoload.php` file.
-
-## Getting Started
+Create an instance as shown below:
 
 ```php
 //include composer autoload.php
 require 'vendor/autoload.php';
 
-//use the projects Parser module
+//use the project's Parser module
 use Forensic\FeedParser\Parser;
 
 //create an instance
@@ -61,11 +55,32 @@ foreach ($items as $item)
 }
 ```
 
-## Setting Parser Options
+## Export Feed as JSON
 
-You can pass in some configuration options when creating a Parser instance or even set them later.
+You can also export the parsed feed as json, as shown below. This can also help you view all properties that accessible in the parsed feed.
 
 ```php
+//create an instance
+$parser = new Parser();
+
+//parse yahoo rss news feed
+$feed = $parser->parseFromURL('https://www.yahoo.com/news/rss/mostviewed');
+
+header('Content-Type: application/json');
+
+//export whole feed
+echo $feed->toJSON();
+
+//export a single item
+echo $feed->items[0]->toJSON();
+```
+
+## Parser Options
+
+The following configuration options can be passed in when creating an instance or set through the designated public methods:
+
+```php
+//constructor signature
 new Parser(
     string $default_lang = 'en',
     string $date_template = '',
@@ -74,56 +89,60 @@ new Parser(
 );
 ```
 
-## Modifying options later
+- **default_lang**:
 
-You can change options through the appropriate exposed method too.
+    This option sets the default feed language property to use should there be no language entry found in the xml document.
 
-```php
-$parser = new Parser();
+    ```php
+    $parser = new Parser();
+    $parser->setDefaultLanguage('fr');
+    ````
 
-//set language
-$parser->setLanguage($lang);
+- **date_template**:
 
-//set date Template
-$parser->setDateTemplate($date_template);
+    This option sets the date formatter template used when parsing feed date properties such as `lastUpdated`. the default format used is `'jS F, Y, g:i A'`. The formatter template should be a valid php date formatter argument. see [date](http://php.net/manual/en/function.date.php) for details.
 
-//remove styles
-$parser->removeStyles(true);
+    ```php
+    $parser = new Parser();
+    $parser->setDateTemplate('jS F, y, g:i a');
+    ````
 
-//remove scripts
-$parser->removeScripts(true);
+- **remove_styles**:
+
+    This option states if stylings found in any feed item's content, should be stripped off. The stylings include html `style` element and attribute. Defaults to true.
+
+    ```php
+    $parser = new Parser();
+    $parser->removeStyles(true);
+    ```
+
+- **remove_scripts**:
+
+    This option states if any scripting found in any feed item's content, should be stripped off. Scripting includes html `script` element and event handler `on-prefixed` element attributes such as `onclick`. Defaults to true.
+
+    ```php
+    $parser = new Parser();
+    $parser->removeScripts(true);
+    ```
+
+## Testing FeedParser
+
+To locally test or contribute to this project, You should have at least php 7.1, xDebug, composer and npm installed, then ollow the steps below:
+
+**Clone this repo**:
+
+```bash
+git clone https://github.com/harrison-ifeanyichukwu/php-feed-parser && php-feed-parser
 ```
 
-## Parser Options Explained
+**Install dependencies**:
 
-- **default_lang**: This option sets the default feed language property to use should there be no language entry found in the xml document.
+```bash
+composer install && npm install
+```
 
-- **date_template**: This option sets the date formatter template used when parsing feed date properties such as `lastUpdated`. the default format used is `'jS F, Y, g:i A'`. The formatter template should be a valid php date formatter argument. see [date](http://php.net/manual/en/function.date.php) for details.
+**Run test**:
 
-- **remove_styles**: This option states if stylings found in any feed item's content, should be stripped off. The stylings include html `style` element and attribute. Defaults to true.
-
-- **remove_scripts**: This option states if any scripting found in any feed item's content, should be stripped off. Scripting includes html `script` element and event handler `on-prefixed` element attributes such as `onclick`. Defaults to true.
-
-### Exporting feed to Array & JSON
-
-You can export parsed feed to array or json. This can also help you view all properties that are accessible parsed feed.
-
-```php
-//include composer autoload.php
-require 'vendor/autoload.php';
-
-//use the projects Parser module
-use Forensic\FeedParser\Parser;
-
-//create an instance
-$parser = new Parser();
-
-//parse yahoo rss news feed
-$feed = $parser->parseFromURL('https://www.yahoo.com/news/rss/mostviewed');
-
-$feed_array = $feed->toArray();
-
-//send to front end
-header('Content-Type: application/json');
-echo $feed->toJSON();
+```bash
+vendor/bin/phpunit
 ```
