@@ -1,6 +1,8 @@
 # PHP Feed Parser
 
 [![Build Status](https://travis-ci.org/harrison-ifeanyichukwu/php-feed-parser.svg?branch=master)](https://travis-ci.org/harrison-ifeanyichukwu/php-feed-parser)
+[![Coverage Status](https://coveralls.io/repos/github/harrison-ifeanyichukwu/php-feed-parser/badge.svg?branch=master)](https://coveralls.io/github/harrison-ifeanyichukwu/php-feed-parser?branch=master)
+[![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
 
 PHP Feed Parser is a fully integrated web syndication feed parser. It can successfully parse all the three major syndication feeds which include [RSS](http://cyber.harvard.edu/rss/rss.html), [ATOM](https://tools.ietf.org/html/rfc4287) & [RDF](http://web.resource.org/rss/1.0/spec) feeds.
 
