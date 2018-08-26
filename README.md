@@ -146,3 +146,12 @@ composer install && npm install
 ```bash
 vendor/bin/phpunit
 ```
+
+## About Maintainers
+
+This project is maintained by [harrison ifeanyichukwu](mailto:harrisonifeanyichukwu@gmail.com),
+a young, full stack web developer, PHP, JavaScript and Database Engineer focusing on LAMP & MERN tech stacks with 5+ years experience working with PHP, Symfony, Laravel, JavaScript, CSS & HTML5 technologies. 3+ years experience with database administration, Node.js tech stack, Unit Testing, web asset management (webpack, rollup.js, sass, less, babel) and continuous integration.
+
+Harrison is the maintainer of w3c [xml-serializer](https://www.npmjs.com/package/@harrison-ifeanyichukwu/xml-serializer) project, node.js [R-Server](https://github.com/harrison-ifeanyichukwu/r-server), [Rollup-all](https://www.npmjs.com/package/rollup-all) one-time [Rollup.js](https://rollupjs.org/guide/en) build tool, [Forensic JS](https://www.npmjs.com/package/forensic-js) JavaScript library and other amazing projects.
+
+He is available for hire, in search for new amazing challenge, and looks forward to hearing from you soon!!!
