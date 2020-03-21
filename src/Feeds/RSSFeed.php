@@ -32,7 +32,7 @@ class RSSFeed extends BaseFeed
             ],
             'copyright' => 'channel/copyright',
             'publisher' => 'channel/managingEditor || channel/webMaster',
-            'lastUpdated' => 'channel/pubDate',
+            'lastUpdated' => 'channel/lastBuildDate || channel/pubDate',
             'generator' => 'channel/generator',
             'language' => 'channel/language',
             'category' => 'channel/category'

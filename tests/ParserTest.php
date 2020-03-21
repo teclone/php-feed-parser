@@ -221,12 +221,14 @@ class ParserTest extends TestCase
     public function testFeedToJSONMethod()
     {
         $feed = $this->_parser->parseFromFile(__DIR__ . '/Helpers/Feeds/rss.xml');
+        // echo $feed->toJSON();
         $this->assertTrue(is_string($feed->toJSON()));
     }
 
     public function testFeedItemToJSONMethod()
     {
         $feed = $this->_parser->parseFromFile(__DIR__ . '/Helpers/Feeds/rss.xml');
+        echo $feed->items[0]->toJSON();
         $this->assertTrue(is_string($feed->items[0]->toJSON()));
     }
 }

@@ -41,6 +41,11 @@ class BaseFeedItem
     protected $_content = '';
 
     /**
+     * feeds text content, all html has been stripped out
+     */
+    protected $_textContent = '';
+
+    /**
      * image associated with the feed item
     */
     protected $_image = [
@@ -62,12 +67,17 @@ class BaseFeedItem
     ];
 
     /**
+     * time string describing when this feed item was created
+     */
+    protected $_createdAt = '';
+
+    /**
      * time string describing when this feed item was last updated
     */
     protected $_lastUpdated = '';
 
     /**
-     * what category does this feed item cover
+     * what category does this feed item belong to
     */
     protected $_category = '';
 
@@ -134,11 +144,13 @@ class BaseFeedItem
         {
             $this_property_name = $prop->getName();
             $property_name = substr($this_property_name, 1); //dont include the underscore
-            if ($property_name === 'type')
+            if ($property_name === 'type') {
                 $result[$property_name] = $this->{$this_property_name}->value();
+            }
 
-            else
+            else {
                 $result[$property_name] = $this->{$this_property_name};
+            }
         }
 
         return $result;

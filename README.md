@@ -1,7 +1,7 @@
 # PHP Feed Parser
 
-[![Build Status](https://travis-ci.org/harrison-ifeanyichukwu/php-feed-parser.svg?branch=master)](https://travis-ci.org/harrison-ifeanyichukwu/php-feed-parser)
-[![Coverage Status](https://coveralls.io/repos/github/harrison-ifeanyichukwu/php-feed-parser/badge.svg?branch=master)](https://coveralls.io/github/harrison-ifeanyichukwu/php-feed-parser?branch=master)
+[![Build Status](https://travis-ci.org/teclone/php-feed-parser.svg?branch=master)](https://travis-ci.org/teclone/php-feed-parser)
+[![Coverage Status](https://coveralls.io/repos/github/teclone/php-feed-parser/badge.svg?branch=master)](https://coveralls.io/github/teclone/php-feed-parser?branch=master)
 [![semantic-release](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
 ![Packagist](https://img.shields.io/packagist/dt/forensic/feed-parser.svg)
 
@@ -50,6 +50,8 @@ foreach ($items as $item)
     //access feed item properties
     echo $item->link;
     echo $item->content;
+    echo $item->textContent; // the same as content, but all html tags are stripped out
+    echo $item->createdAt;
     echo $item->lastUpdated;
     echo $item->category;
     echo $item->image->src;
@@ -60,7 +62,7 @@ foreach ($items as $item)
 
 ## Export Feed as JSON
 
-You can also export the parsed feed as json, as shown below. This can also help you view all properties that accessible in the parsed feed.
+You can also export the parsed feed as json, as shown below. This can also help you view all properties that are accessible in the parsed feed.
 
 ```php
 //create an instance
@@ -94,39 +96,39 @@ new Parser(
 
 - **default_lang**:
 
-    This option sets the default feed language property to use should there be no language entry found in the xml document.
+  This option sets the default feed language property to use should there be no language entry found in the xml document.
 
-    ```php
-    $parser = new Parser();
-    $parser->setDefaultLanguage('fr');
-    ````
+  ```php
+  $parser = new Parser();
+  $parser->setDefaultLanguage('fr');
+  ```
 
 - **date_template**:
 
-    This option sets the date formatter template used when parsing feed date properties such as `lastUpdated`. the default format used is `'jS F, Y, g:i A'`. The formatter template should be a valid php date formatter argument. see [date](http://php.net/manual/en/function.date.php) for details.
+  This option sets the date formatter template used when parsing feed date properties such as `lastUpdated`. the default format used is `'jS F, Y, g:i A'`. The formatter template should be a valid php date formatter argument. see [date](http://php.net/manual/en/function.date.php) for details.
 
-    ```php
-    $parser = new Parser();
-    $parser->setDateTemplate('jS F, y, g:i a');
-    ````
+  ```php
+  $parser = new Parser();
+  $parser->setDateTemplate('jS F, y, g:i a');
+  ```
 
 - **remove_styles**:
 
-    This option states if stylings found in any feed item's content, should be stripped off. The stylings include html `style` element and attribute. Defaults to true.
+  This option states if stylings found in any feed item's content, should be stripped off. The stylings include html `style` element and attribute. Defaults to true.
 
-    ```php
-    $parser = new Parser();
-    $parser->removeStyles(true);
-    ```
+  ```php
+  $parser = new Parser();
+  $parser->removeStyles(true);
+  ```
 
 - **remove_scripts**:
 
-    This option states if any scripting found in any feed item's content, should be stripped off. Scripting includes html `script` element and event handler `on-prefixed` element attributes such as `onclick`. Defaults to true.
+  This option states if any scripting found in any feed item's content, should be stripped off. Scripting includes html `script` element and event handler `on-prefixed` element attributes such as `onclick`. Defaults to true.
 
-    ```php
-    $parser = new Parser();
-    $parser->removeScripts(true);
-    ```
+  ```php
+  $parser = new Parser();
+  $parser->removeScripts(true);
+  ```
 
 ## Testing FeedParser
 
@@ -135,7 +137,7 @@ To locally test or contribute to this project, You should have at least php 7.1,
 **Clone this repo**:
 
 ```bash
-git clone https://github.com/harrison-ifeanyichukwu/php-feed-parser && php-feed-parser
+git clone https://github.com/teclone/php-feed-parser && php-feed-parser
 ```
 
 **Install dependencies**:
@@ -149,12 +151,3 @@ composer install && npm install
 ```bash
 vendor/bin/phpunit
 ```
-
-## About Maintainers
-
-This project is maintained by [harrison ifeanyichukwu](mailto:harrisonifeanyichukwu@gmail.com),
-a young, full stack web developer, PHP, JavaScript and Database Engineer focusing on LAMP & MERN tech stacks with 5+ years experience working with PHP, Symfony, Laravel, JavaScript, CSS & HTML5 technologies. 3+ years experience with database administration, Node.js tech stack, Unit Testing, web asset management (webpack, rollup.js, sass, less, babel) and continuous integration.
-
-Harrison is the maintainer of w3c [xml-serializer](https://www.npmjs.com/package/@harrison-ifeanyichukwu/xml-serializer) project, node.js [R-Server](https://github.com/harrison-ifeanyichukwu/r-server), [Rollup-all](https://www.npmjs.com/package/rollup-all) one-time [Rollup.js](https://rollupjs.org/guide/en) build tool, [Forensic JS](https://www.npmjs.com/package/forensic-js) JavaScript library and other amazing projects.
-
-He is available for hire, in search for new amazing challenge, and looks forward to hearing from you soon!!!

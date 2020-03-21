@@ -34,6 +34,11 @@ class BaseFeed
     protected $_title = '';
 
     /**
+     * the publisher
+     */
+    protected $_publisher = '';
+
+    /**
      * url link to feed's homepage
     */
     protected $_link = '';
@@ -123,8 +128,9 @@ class BaseFeed
 
         //get items and parse
         $items = $xpath->selectAltNodes($item_selector);
-        for ($i = 0, $len = $items->length; $i < $len; $i++)
+        for ($i = 0, $len = $items->length; $i < $len; $i++) {
             $this->_items[] = new $item_class($items->item($i), $xpath, $parser_options);
+        }
     }
 
     /**
@@ -138,10 +144,12 @@ class BaseFeed
         if (property_exists($this, $this_property))
         {
             $value = $this->{$this_property};
-            if (is_array($value) && $property !== 'items')
+            if (is_array($value) && $property !== 'items') {
                 return new ParameterBag($value);
-            else
+            }
+            else {
                 return $value;
+            }
         }
 
         return null;

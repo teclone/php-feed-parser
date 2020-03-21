@@ -16,6 +16,7 @@ class RDFFeedItem extends BaseFeedItem
             'title' => 'def:title || dc:title',
             'link' => 'def:link',
             'content' => 'content:encoded || dc:description || def:description',
+            'textContent' => 'content:encoded || dc:description || def:description',
             'enclosure' => [
                 'type' => 'enc:enclosure/@enc:type',
                 'url' => 'enc:enclosure/@rdf:resource',
@@ -23,6 +24,7 @@ class RDFFeedItem extends BaseFeedItem
             ],
             'source' => 'dc:source',
             //'image' => { 'src' => '', 'link' => '', 'title' => '' }, // to be parsed specially
+            'createdAt' => 'dc:date', // a date construct
             'lastUpdated' => 'dc:date', // a date construct
             'author' => 'dc:creator || dc:contributor',
             'category' => 'dc:coverage || dc:subject/taxo:topic/@rdf:value || dc:subject || ' .

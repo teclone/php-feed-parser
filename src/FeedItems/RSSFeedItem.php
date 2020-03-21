@@ -15,6 +15,7 @@ class RSSFeedItem extends BaseFeedItem
             'id' => 'guid',
             'title' => 'title',
             'link' => 'link',
+            'textContent' => 'content:encoded || description',
             'content' => 'content:encoded || description',
             'source' => 'source',
             'enclosure' => [
@@ -23,7 +24,8 @@ class RSSFeedItem extends BaseFeedItem
                 'length' => 'enclosure/@length'
             ],
             //'image' => { 'src' => '', 'link' => '', 'title' => '' }, // to be parsed specially
-            'lastUpdated' => 'pubDate',
+            'createdAt' => 'pubDate',
+            'lastUpdated' => 'lastBuildDate || pubDate',
             'author' => 'author || dc:creator',
             'category' => 'category'
         ];

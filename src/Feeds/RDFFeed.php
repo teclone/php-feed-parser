@@ -6,7 +6,6 @@ namespace Forensic\FeedParser\Feeds;
 use Forensic\FeedParser\Enums\FeedTypes;
 use Forensic\FeedParser\XPath;
 
-
 class RDFFeed extends BaseFeed
 {
     public function __construct(XPath $xpath, string $default_lang, array $parser_options)
@@ -34,6 +33,7 @@ class RDFFeed extends BaseFeed
             ],
             'copyright' => 'def:channel/dc:rights',
             'lastUpdated' => 'def:channel/dc:date',
+            'publisher' => 'def:channel/dc:publisher || def:channel/dc:creator',
             'generator' => 'def:channel/dc:publisher || def:channel/dc:creator',
             'language' => 'def:channel/dc:language',
             'category' => 'def:channel/dc:coverage || ' .
