@@ -14,8 +14,9 @@ trait Parser
         string $value,
         array $parser_options
     ) {
-        if ($value === '')
+        if ($value === '') {
             return '';
+        }
 
         switch ($property_name) {
             case 'lastUpdated':
@@ -23,6 +24,12 @@ trait Parser
                 $timestamp = strtotime($value);
                 $value = date($parser_options['date-template'], $timestamp);
                 break;
+
+            case 'lastUpdatedTimestamp':
+            case 'createdAtTimestamp':
+                $value = strtotime($value);
+                break;
+
             case 'textContent':
                 $value = \strip_tags($value);
                 break;

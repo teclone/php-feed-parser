@@ -1,5 +1,6 @@
 <?php
-declare(strict_types = 1);
+
+declare(strict_types=1);
 
 namespace Forensic\FeedParser\FeedItems;
 
@@ -26,6 +27,10 @@ class RSSFeedItem extends BaseFeedItem
             //'image' => { 'src' => '', 'link' => '', 'title' => '' }, // to be parsed specially
             'createdAt' => 'pubDate',
             'lastUpdated' => 'lastBuildDate || pubDate',
+
+            'createdAtTimestamp' => 'pubDate',
+            'lastUpdatedTimestamp' => 'lastBuildDate || pubDate',
+
             'author' => 'author || dc:creator',
             'category' => 'category'
         ];

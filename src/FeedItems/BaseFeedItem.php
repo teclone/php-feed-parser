@@ -1,5 +1,6 @@
 <?php
-declare(strict_types = 1);
+
+declare(strict_types=1);
 
 namespace Forensic\FeedParser\FeedItems;
 
@@ -17,27 +18,27 @@ class BaseFeedItem
 
     /**
      * feed item type
-    */
+     */
     protected $_type = null;
 
     /**
      * feed item id
-    */
+     */
     protected $_id = '';
 
     /**
      * feed item title
-    */
+     */
     protected $_title = '';
 
     /**
      * url link to feed item's homepage
-    */
+     */
     protected $_link = '';
 
     /**
      * feed item content
-    */
+     */
     protected $_content = '';
 
     /**
@@ -47,7 +48,7 @@ class BaseFeedItem
 
     /**
      * image associated with the feed item
-    */
+     */
     protected $_image = [
         'src' => '', //image src link
         'link' => '', //url that this image links to, likely the feed item's homepage
@@ -56,7 +57,7 @@ class BaseFeedItem
 
     /**
      * media type associated with this item
-    */
+     */
     protected $_enclosure = [
 
         'type' => '', //enclose media type
@@ -73,22 +74,32 @@ class BaseFeedItem
 
     /**
      * time string describing when this feed item was last updated
-    */
+     */
     protected $_lastUpdated = '';
 
     /**
+     * timestamp describing when this feed item was created
+     */
+    protected $_createdAtTimestamp = '';
+
+    /**
+     * timestamp describing when this feed item was last updated
+     */
+    protected $_lastUpdatedTimestamp = '';
+
+    /**
      * what category does this feed item belong to
-    */
+     */
     protected $_category = '';
 
     /**
      * item's source
-    */
+     */
     protected $_source = '';
 
     /**
      * who is the author of this item?
-    */
+     */
     protected $_author = '';
 
     /**
@@ -97,10 +108,14 @@ class BaseFeedItem
      *@param DOMElement $item - the feed item node
      *@param XPath $xpath - the xpath instance for the feed
      *@param array $property_selectors - array of property selector maps
-    */
-    public function __construct(FeedItemTypes $feed_item_type, DOMElement $item, XPath $xpath,
-        array $property_selectors, array $parser_options)
-    {
+     */
+    public function __construct(
+        FeedItemTypes $feed_item_type,
+        DOMElement $item,
+        XPath $xpath,
+        array $property_selectors,
+        array $parser_options
+    ) {
         $this->_type = $feed_item_type;
 
         $xpath->setContextNode($item);
@@ -113,12 +128,11 @@ class BaseFeedItem
      *
      *@param string $property - the property to retrieve
      *@return string|null
-    */
+     */
     public function __get(string $property)
     {
         $this_property = '_' . $property;
-        if (property_exists($this, $this_property))
-        {
+        if (property_exists($this, $this_property)) {
             $value = $this->{$this_property};
             if (is_array($value))
                 return new ParameterBag($value);
@@ -132,7 +146,7 @@ class BaseFeedItem
     /**
      * converts the item to array
      *@return array
-    */
+     */
     public function toArray()
     {
         $reflector = new ReflectionClass(get_class($this));
@@ -140,15 +154,12 @@ class BaseFeedItem
 
         $result = [];
 
-        foreach($props as $prop)
-        {
+        foreach ($props as $prop) {
             $this_property_name = $prop->getName();
             $property_name = substr($this_property_name, 1); //dont include the underscore
             if ($property_name === 'type') {
                 $result[$property_name] = $this->{$this_property_name}->value();
-            }
-
-            else {
+            } else {
                 $result[$property_name] = $this->{$this_property_name};
             }
         }
@@ -159,7 +170,7 @@ class BaseFeedItem
     /**
      * convert the feed to json
      *@return string
-    */
+     */
     public function toJSON()
     {
         return json_encode($this->toArray());

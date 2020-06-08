@@ -1,5 +1,6 @@
 <?php
-declare(strict_types = 1);
+
+declare(strict_types=1);
 
 namespace Forensic\FeedParser\Test;
 
@@ -126,7 +127,7 @@ class ParserTest extends TestCase
 
     public function testFromExistingURL()
     {
-        $feed = $this->_parser->parseFromURL('https://www.yahoo.com/news/rss/mostviewed');
+        $feed = $this->_parser->parseFromURL('https://allafrica.com/tools/headlines/rdf/latest/headlines.rdf');
         $this->assertInstanceOf(RSSFeed::class, $feed);
     }
 
@@ -141,7 +142,7 @@ class ParserTest extends TestCase
 
     /**
      * test if it returns string when accessing existing property
-    */
+     */
     public function testFeedExistingPropertyAccessibility()
     {
         $parser = new Parser('en', '', false, false);
@@ -153,7 +154,7 @@ class ParserTest extends TestCase
 
     /**
      * test if it returns null when accessing non existing property
-    */
+     */
     public function testFeedNonExistingPropertyAccessibility()
     {
         $parser = new Parser('en', '', false, false);
@@ -165,7 +166,7 @@ class ParserTest extends TestCase
 
     /**
      * test if it returns string when accessing existing property
-    */
+     */
     public function testFeedItemExistingPropertyAccessibility()
     {
         $parser = new Parser('en', '', false, false);
@@ -177,7 +178,7 @@ class ParserTest extends TestCase
 
     /**
      * test if it returns null when accessing non existing property
-    */
+     */
     public function testFeedItemNonExistingPropertyAccessibility()
     {
         $parser = new Parser('en', '', false, false);
@@ -189,7 +190,7 @@ class ParserTest extends TestCase
 
     /**
      * test if feed returns paramater bag for array properties such as image
-    */
+     */
     public function testIfFeedReturnsParameterBag()
     {
         $feed = $this->_parser->parseFromFile(__DIR__ . '/Helpers/Feeds/rss.xml');
@@ -199,7 +200,7 @@ class ParserTest extends TestCase
     /**
      * test if feed item returns paramater bag for array properties such as image
      * and enclosure
-    */
+     */
     public function testIfFeedItemReturnsParameterBag()
     {
         $feed = $this->_parser->parseFromFile(__DIR__ . '/Helpers/Feeds/rss.xml');

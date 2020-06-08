@@ -1,5 +1,6 @@
 <?php
-declare(strict_types = 1);
+
+declare(strict_types=1);
 
 namespace Forensic\FeedParser\FeedItems;
 
@@ -26,10 +27,14 @@ class RDFFeedItem extends BaseFeedItem
             //'image' => { 'src' => '', 'link' => '', 'title' => '' }, // to be parsed specially
             'createdAt' => 'dc:date', // a date construct
             'lastUpdated' => 'dc:date', // a date construct
+
+            'createdAtTimestamp' => 'dc:date', // a date construct
+            'lastUpdatedTimestamp' => 'dc:date', // a date construct
+
             'author' => 'dc:creator || dc:contributor',
             'category' => 'dc:coverage || dc:subject/taxo:topic/@rdf:value || dc:subject || ' .
                 'parent::rdf:RDF/def:channel/dc:coverage || ' .
-            'parent::rdf:RDF/def:channel/dc:subject/taxo:topic/@rdf:value || ' .
+                'parent::rdf:RDF/def:channel/dc:subject/taxo:topic/@rdf:value || ' .
                 'parent::rdf:RDF/def:channel/dc:subject' // defaults to the parent category
         ];
 

@@ -1,12 +1,14 @@
 <?php
+
 /**
  * The parser module
  *
  * PHP Version 7.1
  *
  *@author Harrison ifeanyichukwu <harrisonifeanyichukwu@gmail.com>
-*/
-declare(strict_types = 1);
+ */
+
+declare(strict_types=1);
 
 namespace Forensic\FeedParser;
 
@@ -22,7 +24,7 @@ use Forensic\FeedParser\Feeds\RDFFeed;
 
 /**
  * Class Parser
-*/
+ */
 class Parser
 {
     /** default parse language */
@@ -30,7 +32,7 @@ class Parser
 
     /**
      * parser options
-    */
+     */
     private $_options = [
         'remove-styles' => null,
         'remove-scripts' => null,
@@ -44,10 +46,13 @@ class Parser
      * style elements should be removed
      *@param bool $remove_scripts - boolean value indicating if inline on* event script
      * attributes event listeners and script elements should be removed
-    */
-    public function __construct(string $default_lang = 'en', string $date_template = '',
-        bool $remove_styles = true, bool $remove_scripts = true)
-    {
+     */
+    public function __construct(
+        string $default_lang = 'en',
+        string $date_template = '',
+        bool $remove_styles = true,
+        bool $remove_scripts = true
+    ) {
         $this->setDefaultLanguage($default_lang);
         $this->setDateTemplate($date_template);
         $this->removeStyles($remove_styles);
@@ -56,7 +61,7 @@ class Parser
 
     /**
      * set default language
-    */
+     */
     public function setDefaultLanguage(string $default_lang)
     {
         $this->_default_lang = $default_lang;
@@ -65,7 +70,7 @@ class Parser
 
     /**
      * return default language
-    */
+     */
     public function getDefaultLanguage()
     {
         return $this->_default_lang;
@@ -73,7 +78,7 @@ class Parser
 
     /**
      * sets date template used when processing dates
-    */
+     */
     public function setDateTemplate(string $date_template)
     {
         if ($date_template !== '')
@@ -87,7 +92,7 @@ class Parser
 
     /**
      * return date template used when processing dates
-    */
+     */
     public function getDateTemplate()
     {
         return $this->_options['date-template'];
@@ -98,7 +103,7 @@ class Parser
      *
      *@param bool [$remove_styles] - the remove styles attributes
      *@return bool|this
-    */
+     */
     public function removeStyles(bool $remove_styles = null)
     {
         if (is_null($remove_styles))
@@ -113,7 +118,7 @@ class Parser
      *
      *@param bool [$remove_scripts] - the remove scripts attributes
      *@return bool|this
-    */
+     */
     public function removeScripts(bool $remove_scripts = null)
     {
         if (is_null($remove_scripts))
@@ -126,7 +131,7 @@ class Parser
     /**
      * creates a feed parser, and xml document, feeds the document to the parser, and returns
      * the result from the parser
-    */
+     */
     private function parse(string $xml)
     {
         $xml_instance = new XML($xml);
@@ -139,8 +144,7 @@ class Parser
         //inspect feed type
         $feed_name = $doc->documentElement->localName;
         $model = null;
-        switch(strtolower($feed_name))
-        {
+        switch (strtolower($feed_name)) {
             case 'feed':
                 $model = ATOMFeed::class;
                 break;
@@ -167,20 +171,17 @@ class Parser
      * Fetches feed from a given url and parses it.
      *
      *@param string $url - the resource url
-    */
+     */
     public function parseFromURL(string $url)
     {
         if (!filter_var($url, FILTER_VALIDATE_URL))
             throw new InvalidURLException($url . ' is not a valid resource url');
 
-        try
-        {
+        try {
             $xml = file_get_contents($url);
             if ($xml === false)
                 throw new Exception('xml resource not found');
-        }
-        catch(Exception $ex)
-        {
+        } catch (Exception $ex) {
             throw new ResourceNotFoundException($ex->getMessage());
         }
 
@@ -191,7 +192,7 @@ class Parser
      * Fetches feed from a given file and parses it.
      *
      *@param string $filename - the file path
-    */
+     */
     public function parseFromFile(string $filename)
     {
         if (!file_exists($filename))
@@ -206,7 +207,7 @@ class Parser
      * Parses feed from the given xml string
      *
      *@param string $xml - the xml string
-    */
+     */
     public function parseFromString(string $xml)
     {
         return $this->parse($xml);
