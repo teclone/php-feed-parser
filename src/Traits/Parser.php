@@ -27,7 +27,7 @@ trait Parser
 
             case 'lastUpdatedTimestamp':
             case 'createdAtTimestamp':
-                $value = strtotime($value);
+                $value = strtotime($value) * 1000;
                 break;
 
             case 'textContent':
