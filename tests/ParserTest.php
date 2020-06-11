@@ -30,11 +30,6 @@ class ParserTest extends TestCase
         $this->assertSame('en', $this->_parser->getDefaultLanguage());
     }
 
-    public function testDefaultDateTemplate()
-    {
-        $this->assertEquals('jS F, Y, g:i A', $this->_parser->getDateTemplate());
-    }
-
     public function testDefaultRemoveStyles()
     {
         $this->assertTrue($this->_parser->removeStyles());
@@ -51,12 +46,6 @@ class ParserTest extends TestCase
         $this->assertSame('fr', $this->_parser->getDefaultLanguage());
     }
 
-    public function testUpdateDateTemplate()
-    {
-        $this->_parser->setDateTemplate('jS f, Y, g:i A');
-        $this->assertSame('jS f, Y, g:i A', $this->_parser->getDateTemplate());
-    }
-
     public function testUpdateRemoveStyles()
     {
         $this->_parser->removeStyles(false);
@@ -71,7 +60,7 @@ class ParserTest extends TestCase
 
     public function testConstructSettings()
     {
-        $parser = new Parser('fr', '', false, false);
+        $parser = new Parser('fr', false, false);
         $this->assertSame('fr', $parser->getDefaultLanguage());
         $this->assertFalse($parser->removeStyles());
         $this->assertFalse($parser->removeScripts());
@@ -133,7 +122,7 @@ class ParserTest extends TestCase
 
     public function testFromString()
     {
-        $parser = new Parser('en', '', false, false);
+        $parser = new Parser('en', false, false);
         $feed = $parser->parseFromString(
             file_get_contents(__DIR__ . '/Helpers/Feeds/atom.xml')
         );
@@ -145,7 +134,7 @@ class ParserTest extends TestCase
      */
     public function testFeedExistingPropertyAccessibility()
     {
-        $parser = new Parser('en', '', false, false);
+        $parser = new Parser('en', false, false);
         $feed = $parser->parseFromString(
             file_get_contents(__DIR__ . '/Helpers/Feeds/atom.xml')
         );
@@ -157,7 +146,7 @@ class ParserTest extends TestCase
      */
     public function testFeedNonExistingPropertyAccessibility()
     {
-        $parser = new Parser('en', '', false, false);
+        $parser = new Parser('en', false, false);
         $feed = $parser->parseFromString(
             file_get_contents(__DIR__ . '/Helpers/Feeds/atom.xml')
         );
@@ -169,7 +158,7 @@ class ParserTest extends TestCase
      */
     public function testFeedItemExistingPropertyAccessibility()
     {
-        $parser = new Parser('en', '', false, false);
+        $parser = new Parser('en', false, false);
         $feed = $parser->parseFromString(
             file_get_contents(__DIR__ . '/Helpers/Feeds/atom.xml')
         );
@@ -181,7 +170,7 @@ class ParserTest extends TestCase
      */
     public function testFeedItemNonExistingPropertyAccessibility()
     {
-        $parser = new Parser('en', '', false, false);
+        $parser = new Parser('en', false, false);
         $feed = $parser->parseFromString(
             file_get_contents(__DIR__ . '/Helpers/Feeds/atom.xml')
         );
@@ -229,7 +218,6 @@ class ParserTest extends TestCase
     public function testFeedItemToJSONMethod()
     {
         $feed = $this->_parser->parseFromFile(__DIR__ . '/Helpers/Feeds/rss.xml');
-        echo $feed->items[0]->toJSON();
         $this->assertTrue(is_string($feed->items[0]->toJSON()));
     }
 }

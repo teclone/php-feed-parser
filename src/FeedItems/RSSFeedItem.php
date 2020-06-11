@@ -28,9 +28,6 @@ class RSSFeedItem extends BaseFeedItem
             'createdAt' => 'pubDate',
             'lastUpdated' => 'lastBuildDate || pubDate',
 
-            'createdAtTimestamp' => 'pubDate',
-            'lastUpdatedTimestamp' => 'lastBuildDate || pubDate',
-
             'author' => 'author || dc:creator',
             'category' => 'category'
         ];

@@ -28,9 +28,6 @@ class RDFFeedItem extends BaseFeedItem
             'createdAt' => 'dc:date', // a date construct
             'lastUpdated' => 'dc:date', // a date construct
 
-            'createdAtTimestamp' => 'dc:date', // a date construct
-            'lastUpdatedTimestamp' => 'dc:date', // a date construct
-
             'author' => 'dc:creator || dc:contributor',
             'category' => 'dc:coverage || dc:subject/taxo:topic/@rdf:value || dc:subject || ' .
                 'parent::rdf:RDF/def:channel/dc:coverage || ' .

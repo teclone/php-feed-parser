@@ -44,12 +44,6 @@ class ATOMFeedItem extends BaseFeedItem
             //date construct
             'lastUpdated' => 'atom:updated || atom:source/atom:updated || atom:published || atom:source/atom:published',
 
-            //date construct
-            'createdAtTimestamp' => 'atom:published || atom:source/atom:published || atom:updated || atom:source/atom:updated',
-
-            //date construct
-            'lastUpdatedTimestamp' => 'atom:updated || atom:source/atom:updated || atom:published || atom:source/atom:published',
-
             'author' => 'atom:author/atom:name || atom:source/atom:author/atom:name || ' .
                 'parent::atom:feed/atom:author/atom:name',
 

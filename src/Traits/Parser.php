@@ -6,7 +6,6 @@ namespace Forensic\FeedParser\Traits;
 
 use Forensic\FeedParser\XPath;
 
-
 trait Parser
 {
     private function filterPropertyValue(
@@ -19,16 +18,11 @@ trait Parser
         }
 
         switch ($property_name) {
-            case 'lastUpdated':
-            case 'createdAt':
-                $timestamp = strtotime($value);
-                $value = date($parser_options['date-template'], $timestamp);
-                break;
-
-            case 'lastUpdatedTimestamp':
-            case 'createdAtTimestamp':
-                $value = strtotime($value) * 1000;
-                break;
+                // case 'lastUpdated':
+                // case 'createdAt':
+                //     $timestamp = strtotime($value);
+                //     $value = date($parser_options['date-template'], $timestamp);
+                //     break;
 
             case 'textContent':
                 $value = \strip_tags($value);

@@ -35,8 +35,7 @@ class Parser
      */
     private $_options = [
         'remove-styles' => null,
-        'remove-scripts' => null,
-        'date-template' => ''
+        'remove-scripts' => null
     ];
 
     /**
@@ -49,12 +48,10 @@ class Parser
      */
     public function __construct(
         string $default_lang = 'en',
-        string $date_template = '',
         bool $remove_styles = true,
         bool $remove_scripts = true
     ) {
         $this->setDefaultLanguage($default_lang);
-        $this->setDateTemplate($date_template);
         $this->removeStyles($remove_styles);
         $this->removeScripts($remove_scripts);
     }
@@ -74,28 +71,6 @@ class Parser
     public function getDefaultLanguage()
     {
         return $this->_default_lang;
-    }
-
-    /**
-     * sets date template used when processing dates
-     */
-    public function setDateTemplate(string $date_template)
-    {
-        if ($date_template !== '')
-            $this->_options['date-template'] = $date_template;
-
-        else if ($this->_options['date-template'] === '')
-            $this->_options['date-template'] = 'jS F, Y, g:i A';
-
-        return $this;
-    }
-
-    /**
-     * return date template used when processing dates
-     */
-    public function getDateTemplate()
-    {
-        return $this->_options['date-template'];
     }
 
     /**

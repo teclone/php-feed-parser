@@ -88,7 +88,6 @@ The following configuration options can be passed in when creating an instance o
 //constructor signature
 new Parser(
     string $default_lang = 'en',
-    string $date_template = '',
     bool $remove_styles = true,
     bool $remove_scripts = true
 );
@@ -101,15 +100,6 @@ new Parser(
   ```php
   $parser = new Parser();
   $parser->setDefaultLanguage('fr');
-  ```
-
-- **date_template**:
-
-  This option sets the date formatter template used when parsing feed date properties such as `lastUpdated`. the default format used is `'jS F, Y, g:i A'`. The formatter template should be a valid php date formatter argument. see [date](http://php.net/manual/en/function.date.php) for details.
-
-  ```php
-  $parser = new Parser();
-  $parser->setDateTemplate('jS F, y, g:i a');
   ```
 
 - **remove_styles**:

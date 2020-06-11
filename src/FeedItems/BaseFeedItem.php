@@ -78,16 +78,6 @@ class BaseFeedItem
     protected $_lastUpdated = '';
 
     /**
-     * timestamp describing when this feed item was created
-     */
-    protected $_createdAtTimestamp = '';
-
-    /**
-     * timestamp describing when this feed item was last updated
-     */
-    protected $_lastUpdatedTimestamp = '';
-
-    /**
      * what category does this feed item belong to
      */
     protected $_category = '';
